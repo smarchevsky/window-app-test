@@ -10,10 +10,14 @@
 #include <audiopolicy.h>
 #include <psapi.h>
 
+// #include <fcntl.h>
+// #include <io.h>
+#include <iostream>
 #include <string>
 
 #define MAX_LOADSTRING 100
-#define WM_REFRESH_VOLUMES (WM_USER + 1)
+// #define WM_REFRESH_MASTER_VOL (WM_USER + 1)
+#define WM_REFRESH_VOLUMES (WM_USER + 2)
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
@@ -21,6 +25,16 @@ INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 HINSTANCE hInst; // current instance
 WCHAR szTitle[MAX_LOADSTRING]; // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING]; // the main window class name
+
+void CreateConsole()
+{
+    AllocConsole();
+    FILE* fDummy;
+    freopen_s(&fDummy, "CONOUT$", "w", stdout);
+    freopen_s(&fDummy, "CONOUT$", "w", stderr);
+    freopen_s(&fDummy, "CONIN$", "r", stdin);
+    std::ios::sync_with_stdio();
+}
 
 //
 // AUDIO
@@ -31,6 +45,7 @@ HWND g_hEdit = NULL;
 IAudioEndpointVolume* g_pVolumeControl;
 IAudioSessionManager2* g_pSessionManager = NULL;
 class AudioObserver* g_Observer = NULL;
+int masterVol = 0;
 
 class VolumeChangeListener : public IAudioEndpointVolumeCallback {
 public:
@@ -52,8 +67,10 @@ public:
     STDMETHODIMP OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pData)
     {
         int volumePercent = (int)(pData->fMasterVolume * 100 + 0.5f);
-        std::wstring text = L"Volume: " + std::to_wstring(volumePercent) + L"%";
-        SetWindowTextW(g_label, text.c_str());
+
+        masterVol = volumePercent;
+        PostMessage(GetParent(g_hEdit), WM_REFRESH_VOLUMES, 0, 0);
+
         return S_OK;
     }
 } g_VolumeCallback;
@@ -157,48 +174,51 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
     }
 }
 
-// --- 3. The Logic to Rebuild the String ---
 void RefreshUI()
 {
-    IAudioSessionEnumerator* pEnum = NULL;
-    if (FAILED(g_pSessionManager->GetSessionEnumerator(&pEnum)))
+    std::wstring text = L"Volume: " + std::to_wstring(masterVol) + L"%";
+    SetWindowTextW(g_label, text.c_str());
+
+    if (!g_pSessionManager)
         return;
 
-    int count = 0;
-    pEnum->GetCount(&count);
-    std::wstring output = L"App Volumes:\r\n\r\n";
+    IAudioSessionEnumerator* pEnum = NULL;
+    if (SUCCEEDED(g_pSessionManager->GetSessionEnumerator(&pEnum))) {
+        int count = 0;
+        pEnum->GetCount(&count);
 
-    for (int i = 0; i < count; i++) {
-        IAudioSessionControl* pControl = NULL;
-        IAudioSessionControl2* pControl2 = NULL;
-        ISimpleAudioVolume* pVol = NULL;
+        std::wstring output = L"App Volumes:\r\n\r\n";
 
-        if (SUCCEEDED(pEnum->GetSession(i, &pControl))) {
-            pControl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pControl2);
-            pControl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol);
+        for (int i = 0; i < count; i++) {
+            IAudioSessionControl* pControl = NULL;
+            if (SUCCEEDED(pEnum->GetSession(i, &pControl))) {
 
-            DWORD pid = 0;
-            pControl2->GetProcessId(&pid);
-            float vol = 0;
-            pVol->GetMasterVolume(&vol);
+                IAudioSessionControl2* pControl2 = NULL;
+                if (SUCCEEDED(pControl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pControl2))) {
 
-            // Only show active sessions or specific apps
-            AudioSessionState state;
-            pControl2->GetState(&state);
-            if (state != AudioSessionStateExpired) {
-                output += GetProcessName(pid) + L": " + std::to_wstring((int)(vol * 100)) + L"%\r\n";
-                // Ensure we are listening to this specific session's volume
-                pControl->RegisterAudioSessionNotification(g_Observer);
+                    AudioSessionState state;
+                    pControl2->GetState(&state);
+
+                    if (state != AudioSessionStateExpired) {
+                        DWORD pid = 0;
+                        pControl2->GetProcessId(&pid);
+
+                        ISimpleAudioVolume* pVol = NULL;
+                        if (SUCCEEDED(pControl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol))) {
+                            float vol = 0;
+                            pVol->GetMasterVolume(&vol);
+                            output += GetProcessName(pid) + L": " + std::to_wstring((int)(vol * 100)) + L"%\r\n";
+                            pVol->Release(); // Release Volume
+                        }
+                    }
+                    pControl2->Release(); // Release Control2
+                }
+                pControl->Release(); // Release Control
             }
-
-            pVol->Release();
-            pControl2->Release();
-            pControl->Release();
         }
+        SetWindowTextW(g_hEdit, output.c_str());
+        pEnum->Release(); // Release Enumerator
     }
-
-    SetWindowTextW(g_hEdit, output.c_str());
-    pEnum->Release();
 }
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -206,6 +226,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR lpCmdLine,
     _In_ int nCmdShow)
 {
+    CreateConsole();
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
@@ -235,7 +256,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
         hInst = hInstance;
         hWnd = CreateWindowExW(WS_EX_TOPMOST, szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-            CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, nullptr, nullptr, hInstance, nullptr);
+            650, 200, 800, 600, nullptr, nullptr, hInstance, nullptr);
         if (!hWnd)
             return FALSE;
 
