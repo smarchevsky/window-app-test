@@ -24,6 +24,7 @@ WCHAR szWindowClass[MAX_LOADSTRING]; // the main window class name
 
 HWND g_label;
 IAudioEndpointVolume* g_endpointVolume;
+IAudioEndpointVolumeCallback* g_audioVolumeCallback;
 
 class VolumeCallback : public IAudioEndpointVolumeCallback {
     LONG m_refCount;
@@ -94,8 +95,8 @@ bool initAudio()
     if (FAILED(hr))
         return false;
 
-    VolumeCallback* callback = new VolumeCallback();
-    g_endpointVolume->RegisterControlChangeNotify(callback);
+    g_audioVolumeCallback = new VolumeCallback();
+    g_endpointVolume->RegisterControlChangeNotify(g_audioVolumeCallback);
 
     // Set initial volume text
     float volume = 0.0f;
@@ -106,6 +107,22 @@ bool initAudio()
     SetWindowTextW(g_label, text.c_str());
 
     return true;
+}
+
+void deinitAudio()
+{
+    if (g_endpointVolume && g_audioVolumeCallback) {
+        g_endpointVolume->UnregisterControlChangeNotify(g_audioVolumeCallback);
+        g_audioVolumeCallback->Release();
+        g_audioVolumeCallback = nullptr;
+    }
+
+    if (g_endpointVolume) {
+        g_endpointVolume->Release();
+        g_endpointVolume = nullptr;
+    }
+
+    CoUninitialize();
 }
 
 //
@@ -198,6 +215,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         EndPaint(hWnd, &ps);
     } break;
     case WM_DESTROY:
+        deinitAudio();
         PostQuitMessage(0);
         break;
     default:
