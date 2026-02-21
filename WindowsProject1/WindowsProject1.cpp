@@ -4,14 +4,113 @@
 #include "WindowsProject1.h"
 #include "framework.h"
 
+#include <endpointvolume.h> // IAudioEndpointVolume, IAudioEndpointVolumeCallback
+#include <mmdeviceapi.h> // IMMDevice, IMMDeviceEnumerator
+
+#include <string>
+
 #define MAX_LOADSTRING 100
+
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
 HINSTANCE hInst; // current instance
 WCHAR szTitle[MAX_LOADSTRING]; // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING]; // the main window class name
 
-LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
+//
+// AUDIO
+//
+
+HWND g_label;
+IAudioEndpointVolume* g_endpointVolume;
+
+class VolumeCallback : public IAudioEndpointVolumeCallback {
+    LONG m_refCount;
+
+public:
+    VolumeCallback()
+        : m_refCount(1)
+    {
+    }
+
+    // IUnknown
+    ULONG STDMETHODCALLTYPE AddRef() override
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG ulRef = InterlockedDecrement(&m_refCount);
+        if (0 == ulRef)
+            delete this;
+        return ulRef;
+    }
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, VOID** ppv) override
+    {
+        if (riid == IID_IUnknown || riid == __uuidof(IAudioEndpointVolumeCallback)) {
+            *ppv = static_cast<IAudioEndpointVolumeCallback*>(this);
+            AddRef();
+            return S_OK;
+        }
+        *ppv = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    HRESULT STDMETHODCALLTYPE OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify) override
+    {
+        float volume = pNotify->fMasterVolume;
+        int percent = static_cast<int>(volume * 100.0f);
+
+        std::wstring text = L"Volume: " + std::to_wstring(percent) + L"%";
+        SetWindowTextW(g_label, text.c_str());
+
+        return S_OK;
+    }
+};
+
+bool initAudio()
+{
+    CoInitialize(nullptr);
+
+    IMMDeviceEnumerator* enumerator = nullptr;
+    IMMDevice* device = nullptr;
+
+    HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr,
+        CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&enumerator);
+
+    if (FAILED(hr))
+        return false;
+
+    hr = enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
+    if (FAILED(hr))
+        return false;
+
+    hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL,
+        nullptr, (void**)&g_endpointVolume);
+
+    if (FAILED(hr))
+        return false;
+
+    VolumeCallback* callback = new VolumeCallback();
+    g_endpointVolume->RegisterControlChangeNotify(callback);
+
+    // Set initial volume text
+    float volume = 0.0f;
+    g_endpointVolume->GetMasterVolumeLevelScalar(&volume);
+    int percent = static_cast<int>(volume * 100.0f);
+
+    std::wstring text = L"Volume: " + std::to_wstring(percent) + L"%";
+    SetWindowTextW(g_label, text.c_str());
+
+    return true;
+}
+
+//
+// AUDIO
+//
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
@@ -27,6 +126,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_WINDOWSPROJECT1, szWindowClass, MAX_LOADSTRING);
 
+    // CREATING WINDOW
+    HWND hWnd;
     {
         WNDCLASSEXW wcex;
         wcex.cbSize = sizeof(WNDCLASSEX);
@@ -42,17 +143,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         wcex.lpszClassName = szWindowClass;
         wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
         RegisterClassExW(&wcex);
-    }
 
-    {
         hInst = hInstance;
-        HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+        hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
         if (!hWnd)
             return FALSE;
 
         ShowWindow(hWnd, nCmdShow);
         UpdateWindow(hWnd);
+    }
+    {
+        g_label = CreateWindowW(L"STATIC", L"Volume: 0%",
+            WS_VISIBLE | WS_CHILD, 50, 40, 200, 30,
+            hWnd, nullptr, hInstance, nullptr);
+
+        initAudio();
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSPROJECT1));
