@@ -23,106 +23,56 @@ WCHAR szWindowClass[MAX_LOADSTRING]; // the main window class name
 //
 
 HWND g_label;
-IAudioEndpointVolume* g_endpointVolume;
-IAudioEndpointVolumeCallback* g_audioVolumeCallback;
+IAudioEndpointVolume* g_pVolumeControl;
 
-class VolumeCallback : public IAudioEndpointVolumeCallback {
-    LONG m_refCount;
-
+class VolumeChangeListener : public IAudioEndpointVolumeCallback {
 public:
-    VolumeCallback()
-        : m_refCount(1)
+    // COM boilerplate
+    STDMETHODIMP QueryInterface(REFIID iid, void** ppv)
     {
-    }
-
-    // IUnknown
-    ULONG STDMETHODCALLTYPE AddRef() override
-    {
-        return InterlockedIncrement(&m_refCount);
-    }
-
-    ULONG STDMETHODCALLTYPE Release() override
-    {
-        ULONG ulRef = InterlockedDecrement(&m_refCount);
-        if (0 == ulRef)
-            delete this;
-        return ulRef;
-    }
-
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, VOID** ppv) override
-    {
-        if (riid == IID_IUnknown || riid == __uuidof(IAudioEndpointVolumeCallback)) {
+        if (iid == __uuidof(IUnknown) || iid == __uuidof(IAudioEndpointVolumeCallback)) {
             *ppv = static_cast<IAudioEndpointVolumeCallback*>(this);
-            AddRef();
             return S_OK;
         }
-        *ppv = nullptr;
         return E_NOINTERFACE;
     }
+    STDMETHODIMP_(ULONG)
+    AddRef() { return 1; }
+    STDMETHODIMP_(ULONG)
+    Release() { return 1; }
 
-    HRESULT STDMETHODCALLTYPE OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify) override
+    // This triggers when volume changes
+    STDMETHODIMP OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pData)
     {
-        float volume = pNotify->fMasterVolume;
-        int percent = static_cast<int>(volume * 100.0f);
-
-        std::wstring text = L"Volume: " + std::to_wstring(percent) + L"%";
+        int volumePercent = (int)(pData->fMasterVolume * 100 + 0.5f);
+        std::wstring text = L"Volume: " + std::to_wstring(volumePercent) + L"%";
         SetWindowTextW(g_label, text.c_str());
-
         return S_OK;
     }
-};
+} g_VolumeCallback;
 
-bool initAudio()
+// --- 2. Initialize WASAPI ---
+void initAudio()
 {
-    CoInitialize(nullptr);
+    CoInitialize(NULL);
+    IMMDeviceEnumerator* pEnumerator = NULL;
+    IMMDevice* pDevice = NULL;
 
-    IMMDeviceEnumerator* enumerator = nullptr;
-    IMMDevice* device = nullptr;
+    CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+    pEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &pDevice);
+    pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&g_pVolumeControl);
 
-    HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr,
-        CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&enumerator);
-
-    if (FAILED(hr))
-        return false;
-
-    hr = enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
-    if (FAILED(hr))
-        return false;
-
-    hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL,
-        nullptr, (void**)&g_endpointVolume);
-
-    if (FAILED(hr))
-        return false;
-
-    g_audioVolumeCallback = new VolumeCallback();
-    g_endpointVolume->RegisterControlChangeNotify(g_audioVolumeCallback);
-
-    // Set initial volume text
-    float volume = 0.0f;
-    g_endpointVolume->GetMasterVolumeLevelScalar(&volume);
-    int percent = static_cast<int>(volume * 100.0f);
-
-    std::wstring text = L"Volume: " + std::to_wstring(percent) + L"%";
+    // Get initial volume
+    float currentVol = 0;
+    g_pVolumeControl->GetMasterVolumeLevelScalar(&currentVol);
+    std::wstring text = L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
     SetWindowTextW(g_label, text.c_str());
 
-    return true;
-}
+    // Register our listener
+    g_pVolumeControl->RegisterControlChangeNotify(&g_VolumeCallback);
 
-void deinitAudio()
-{
-    if (g_endpointVolume && g_audioVolumeCallback) {
-        g_endpointVolume->UnregisterControlChangeNotify(g_audioVolumeCallback);
-        g_audioVolumeCallback->Release();
-        g_audioVolumeCallback = nullptr;
-    }
-
-    if (g_endpointVolume) {
-        g_endpointVolume->Release();
-        g_endpointVolume = nullptr;
-    }
-
-    CoUninitialize();
+    pDevice->Release();
+    pEnumerator->Release();
 }
 
 //
@@ -215,7 +165,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         EndPaint(hWnd, &ps);
     } break;
     case WM_DESTROY:
-        deinitAudio();
+        if (g_pVolumeControl) {
+            g_pVolumeControl->UnregisterControlChangeNotify(&g_VolumeCallback);
+            g_pVolumeControl->Release();
+        }
         PostQuitMessage(0);
         break;
     default:
