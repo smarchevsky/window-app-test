@@ -7,9 +7,13 @@
 #include <endpointvolume.h> // IAudioEndpointVolume, IAudioEndpointVolumeCallback
 #include <mmdeviceapi.h> // IMMDevice, IMMDeviceEnumerator
 
+#include <audiopolicy.h>
+#include <psapi.h>
+
 #include <string>
 
 #define MAX_LOADSTRING 100
+#define WM_REFRESH_VOLUMES (WM_USER + 1)
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
@@ -23,7 +27,10 @@ WCHAR szWindowClass[MAX_LOADSTRING]; // the main window class name
 //
 
 HWND g_label;
+HWND g_hEdit = NULL;
 IAudioEndpointVolume* g_pVolumeControl;
+IAudioSessionManager2* g_pSessionManager = NULL;
+class AudioObserver* g_Observer = NULL;
 
 class VolumeChangeListener : public IAudioEndpointVolumeCallback {
 public:
@@ -79,6 +86,121 @@ void initAudio()
 // AUDIO
 //
 
+std::wstring GetProcessName(DWORD pid)
+{
+    if (pid == 0)
+        return L"System Sounds";
+    TCHAR szName[MAX_PATH] = TEXT("<unknown>");
+    HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProc) {
+        GetModuleBaseName(hProc, NULL, szName, MAX_PATH);
+        CloseHandle(hProc);
+    }
+    return szName;
+}
+
+// --- 2. The Multi-App Listener ---
+// This handles BOTH app-specific volume changes and new apps opening/closing
+class AudioObserver : public IAudioSessionEvents, public IAudioSessionNotification {
+public:
+    HWND hNotify;
+    AudioObserver(HWND hwnd)
+        : hNotify(hwnd)
+    {
+    }
+
+    // IUnknown
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) { return E_NOINTERFACE; }
+    STDMETHODIMP_(ULONG)
+    AddRef() { return 1; }
+    STDMETHODIMP_(ULONG)
+    Release() { return 1; }
+
+    // Triggered when a NEW app starts playing audio
+    STDMETHODIMP OnSessionCreated(IAudioSessionControl* pNewSession)
+    {
+        pNewSession->RegisterAudioSessionNotification(this); // Watch this new app too
+        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0);
+        return S_OK;
+    }
+
+    // Triggered when an app volume changes in the mixer
+    STDMETHODIMP OnSimpleVolumeChanged(float NewVolume, BOOL NewMute, LPCGUID EventContext)
+    {
+        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0);
+        return S_OK;
+    }
+
+    // Boilerplate for IAudioSessionEvents
+    STDMETHODIMP OnDisplayNameChanged(LPCWSTR, LPCGUID) override { return S_OK; }
+    STDMETHODIMP OnIconPathChanged(LPCWSTR, LPCGUID) { return S_OK; }
+    STDMETHODIMP OnChannelVolumeChanged(DWORD, float[], DWORD, LPCGUID) { return S_OK; }
+    STDMETHODIMP OnGroupingParamChanged(LPCGUID, LPCGUID) { return S_OK; }
+    STDMETHODIMP OnStateChanged(AudioSessionState State)
+    {
+        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0); // Handles app closing
+        return S_OK;
+    }
+    STDMETHODIMP OnSessionDisconnected(AudioSessionDisconnectReason)
+    {
+        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0);
+        return S_OK;
+    }
+};
+
+HWINEVENTHOOK g_hook = NULL;
+void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
+    LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime)
+{
+    if (idObject == OBJID_WINDOW && idChild == INDEXID_CONTAINER) {
+        PostMessage(GetParent(g_hEdit), WM_REFRESH_VOLUMES, 0, 0);
+    }
+}
+
+// --- 3. The Logic to Rebuild the String ---
+void RefreshUI()
+{
+    IAudioSessionEnumerator* pEnum = NULL;
+    if (FAILED(g_pSessionManager->GetSessionEnumerator(&pEnum)))
+        return;
+
+    int count = 0;
+    pEnum->GetCount(&count);
+    std::wstring output = L"App Volumes:\r\n\r\n";
+
+    for (int i = 0; i < count; i++) {
+        IAudioSessionControl* pControl = NULL;
+        IAudioSessionControl2* pControl2 = NULL;
+        ISimpleAudioVolume* pVol = NULL;
+
+        if (SUCCEEDED(pEnum->GetSession(i, &pControl))) {
+            pControl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pControl2);
+            pControl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol);
+
+            DWORD pid = 0;
+            pControl2->GetProcessId(&pid);
+            float vol = 0;
+            pVol->GetMasterVolume(&vol);
+
+            // Only show active sessions or specific apps
+            AudioSessionState state;
+            pControl2->GetState(&state);
+            if (state != AudioSessionStateExpired) {
+                output += GetProcessName(pid) + L": " + std::to_wstring((int)(vol * 100)) + L"%\r\n";
+                // Ensure we are listening to this specific session's volume
+                pControl->RegisterAudioSessionNotification(g_Observer);
+            }
+
+            pVol->Release();
+            pControl2->Release();
+            pControl->Release();
+        }
+    }
+
+    SetWindowTextW(g_hEdit, output.c_str());
+    pEnum->Release();
+}
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR lpCmdLine,
@@ -112,20 +234,49 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         RegisterClassExW(&wcex);
 
         hInst = hInstance;
-        hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-            CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+        hWnd = CreateWindowExW(WS_EX_TOPMOST, szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+            CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, nullptr, nullptr, hInstance, nullptr);
         if (!hWnd)
             return FALSE;
 
         ShowWindow(hWnd, nCmdShow);
         UpdateWindow(hWnd);
     }
+
+    g_hook = SetWinEventHook(
+        EVENT_OBJECT_DESTROY, EVENT_OBJECT_DESTROY, // Range of events (just destroy)
+        NULL, // Handle to DLL (NULL for local hook)
+        WinEventProc, // Our callback
+        0, 0, // Process/Thread ID (0 = all)
+        WINEVENT_OUTOFCONTEXT // Flags
+    );
+
     {
         g_label = CreateWindowW(L"STATIC", L"Volume: 0%",
-            WS_VISIBLE | WS_CHILD, 50, 40, 200, 30,
+            WS_VISIBLE | WS_CHILD, 350, 40, 200, 30,
             hWnd, nullptr, hInstance, nullptr);
 
         initAudio();
+    }
+    {
+        g_hEdit = CreateWindowW(L"STATIC", L"",
+            WS_VISIBLE | WS_CHILD, 10, 10, 360, 440,
+            hWnd, nullptr, hInstance, nullptr);
+
+        // g_hEdit = CreateWindowW(L"EDIT", L"", WS_VISIBLE | WS_CHILD | ES_MULTILINE | ES_READONLY | WS_VSCROLL,
+        //     10, 10, 360, 440, hWnd, NULL, NULL, NULL);
+
+        CoInitialize(NULL);
+        IMMDeviceEnumerator* pDevEnum = NULL;
+        IMMDevice* pDev = NULL;
+        CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pDevEnum);
+        pDevEnum->GetDefaultAudioEndpoint(eRender, eMultimedia, &pDev);
+        pDev->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, NULL, (void**)&g_pSessionManager);
+        g_Observer = new AudioObserver(hWnd);
+        g_pSessionManager->RegisterSessionNotification(g_Observer); // Watch for NEW apps
+        RefreshUI();
+        pDev->Release();
+        pDevEnum->Release();
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSPROJECT1));
@@ -144,6 +295,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
+    case WM_REFRESH_VOLUMES:
+        RefreshUI();
+        return 0;
+
     case WM_COMMAND: {
         int wmId = LOWORD(wParam);
         // Parse the menu selections:
@@ -158,19 +313,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
     } break;
+
     case WM_PAINT: {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
         // TODO: Add any drawing code that uses hdc here...
         EndPaint(hWnd, &ps);
     } break;
+
     case WM_DESTROY:
         if (g_pVolumeControl) {
             g_pVolumeControl->UnregisterControlChangeNotify(&g_VolumeCallback);
             g_pVolumeControl->Release();
         }
+        if (g_hook)
+            UnhookWinEvent(g_hook);
         PostQuitMessage(0);
         break;
+
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
