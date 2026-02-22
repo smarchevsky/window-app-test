@@ -222,6 +222,18 @@ void RefreshUI()
     }
 }
 
+HBRUSH hBrush;
+void drawSquareCodeExample(HDC hdc)
+{
+    if (hBrush == nullptr)
+        hBrush = CreateSolidBrush(RGB(100, 100, 250));
+    RECT rect { 000, 000, 600, 600 };
+    FillRect(hdc, &rect, hBrush);
+
+    SetBkMode(hdc, TRANSPARENT);
+    DrawText(hdc, L"Button", -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+}
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR lpCmdLine,
@@ -264,6 +276,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         ShowWindow(hWnd, nCmdShow);
         UpdateWindow(hWnd);
     }
+
+    PostMessage(hWnd, WM_PAINT, 0, 0); // to draw square initially!
 
     g_hook = SetWinEventHook(
         EVENT_OBJECT_DESTROY, EVENT_OBJECT_DESTROY, // Range of events (just destroy)
@@ -329,12 +343,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         int wmId = LOWORD(wParam);
         // Parse the menu selections:
         switch (wmId) {
+
         case IDM_ABOUT:
             DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
             break;
+
         case IDM_EXIT:
             DestroyWindow(hWnd);
             break;
+
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
@@ -343,7 +360,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_PAINT: {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
-        // TODO: Add any drawing code that uses hdc here...
+        drawSquareCodeExample(hdc);
         EndPaint(hWnd, &ps);
     } break;
 
