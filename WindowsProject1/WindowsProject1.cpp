@@ -16,7 +16,7 @@
 #include <string>
 
 #define MAX_LOADSTRING 100
-// #define WM_REFRESH_MASTER_VOL (WM_USER + 1)
+#define WM_REFRESH_MASTER_VOL (WM_USER + 1)
 #define WM_REFRESH_VOLUMES (WM_USER + 2)
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -67,9 +67,8 @@ public:
     STDMETHODIMP OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pData)
     {
         int volumePercent = (int)(pData->fMasterVolume * 100 + 0.5f);
-
         masterVol = volumePercent;
-        PostMessage(GetParent(g_hEdit), WM_REFRESH_VOLUMES, 0, 0);
+        PostMessage(GetParent(g_hEdit), WM_REFRESH_MASTER_VOL, 0, 0);
 
         return S_OK;
     }
@@ -116,8 +115,6 @@ std::wstring GetProcessName(DWORD pid)
     return szName;
 }
 
-// --- 2. The Multi-App Listener ---
-// This handles BOTH app-specific volume changes and new apps opening/closing
 class AudioObserver : public IAudioSessionEvents, public IAudioSessionNotification {
 public:
     HWND hNotify;
@@ -174,11 +171,15 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
     }
 }
 
-void RefreshUI()
+// WM_REFRESH_MASTER_VOL
+void RefreshMasterVol()
 {
     std::wstring text = L"Volume: " + std::to_wstring(masterVol) + L"%";
     SetWindowTextW(g_label, text.c_str());
+}
 
+void RefreshUI()
+{
     if (!g_pSessionManager)
         return;
 
@@ -316,6 +317,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
+    case WM_REFRESH_MASTER_VOL: {
+        RefreshMasterVol();
+        return 0;
+    }
     case WM_REFRESH_VOLUMES:
         RefreshUI();
         return 0;
