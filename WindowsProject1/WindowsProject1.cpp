@@ -29,6 +29,7 @@ WCHAR szWindowClass[MAX_LOADSTRING]; // the main window class name
 void CreateConsole()
 {
     AllocConsole();
+    SetConsoleTitleW(L"Console title");
     FILE* fDummy;
     freopen_s(&fDummy, "CONOUT$", "w", stdout);
     freopen_s(&fDummy, "CONOUT$", "w", stderr);
@@ -77,7 +78,6 @@ public:
 // --- 2. Initialize WASAPI ---
 void initAudio()
 {
-    CoInitialize(NULL);
     IMMDeviceEnumerator* pEnumerator = NULL;
     IMMDevice* pDevice = NULL;
 
@@ -240,6 +240,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ int nCmdShow)
 {
     CreateConsole();
+
+    (void)CoInitialize(NULL); // S_OK, S_FALSE
+
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
@@ -299,10 +302,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             WS_VISIBLE | WS_CHILD, 10, 10, 360, 440,
             hWnd, nullptr, hInstance, nullptr);
 
-        // g_hEdit = CreateWindowW(L"EDIT", L"", WS_VISIBLE | WS_CHILD | ES_MULTILINE | ES_READONLY | WS_VSCROLL,
-        //     10, 10, 360, 440, hWnd, NULL, NULL, NULL);
-
-        CoInitialize(NULL);
         IMMDeviceEnumerator* pDevEnum = NULL;
         IMMDevice* pDev = NULL;
         CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pDevEnum);
@@ -325,6 +324,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
     }
 
+    CoUninitialize();
     return (int)msg.wParam;
 }
 
