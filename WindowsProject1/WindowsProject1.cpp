@@ -35,20 +35,10 @@ void CreateConsole()
 
 HWND g_label;
 HWND g_hEdit;
-// IAudioSessionManager2* g_pSessionManager;
 
 //
 // AUDIO
 //
-
-HWINEVENTHOOK g_hook = NULL;
-void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
-    LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime)
-{
-    if (idObject == OBJID_WINDOW && idChild == INDEXID_CONTAINER) {
-        PostMessage(GetParent(g_hEdit), WM_REFRESH_VOLUMES, 0, 0);
-    }
-}
 
 HBRUSH hBrush;
 void drawSquareCodeExample(HDC hdc)
@@ -110,28 +100,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     PostMessage(hWnd, WM_PAINT, 0, 0); // to draw square initially!
 
-    g_hook = SetWinEventHook(
-        EVENT_OBJECT_DESTROY, EVENT_OBJECT_DESTROY, // Range of events (just destroy)
-        NULL, // Handle to DLL (NULL for local hook)
-        WinEventProc, // Our callback
-        0, 0, // Process/Thread ID (0 = all)
-        WINEVENT_OUTOFCONTEXT // Flags
-    );
+    g_label = CreateWindowW(L"STATIC", L"Volume: 0%", WS_VISIBLE | WS_CHILD, 350, 40, 200, 30, hWnd, nullptr, hInstance, nullptr);
+    g_hEdit = CreateWindowW(L"STATIC", L"", WS_VISIBLE | WS_CHILD, 10, 10, 360, 440, hWnd, nullptr, hInstance, nullptr);
 
-    {
-        g_label = CreateWindowW(L"STATIC", L"Volume: 0%",
-            WS_VISIBLE | WS_CHILD, 350, 40, 200, 30,
-            hWnd, nullptr, hInstance, nullptr);
-
-        ListenerAudio_MasterVolume::get().init(hWnd);
-    }
-    {
-        g_hEdit = CreateWindowW(L"STATIC", L"",
-            WS_VISIBLE | WS_CHILD, 10, 10, 360, 440,
-            hWnd, nullptr, hInstance, nullptr);
-
-        ListenerAudio_AllApplications::get().init(hWnd);
-    }
+    ListenerAudio_MasterVolume::get().init(hWnd);
+    ListenerAudio_AllApplications::get().init(hWnd);
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSPROJECT1));
 
@@ -185,9 +158,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_DESTROY:
         ListenerAudio_MasterVolume::get().uninit();
-
-        if (g_hook)
-            UnhookWinEvent(g_hook);
+        ListenerAudio_AllApplications::get().uninit();
         PostQuitMessage(0);
         break;
 

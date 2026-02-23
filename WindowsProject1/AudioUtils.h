@@ -48,6 +48,7 @@ private:
 class IAudioSessionManager2;
 class ListenerAudio_AllApplications {
     IAudioSessionManager2* g_pSessionManager;
+    HWINEVENTHOOK g_hook; // to detect app close
 
 public:
     void init(HWND hwnd);
