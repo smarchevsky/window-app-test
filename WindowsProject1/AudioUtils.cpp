@@ -85,12 +85,12 @@ void ListenerAudio_MasterVolume::uninit()
     }
 }
 
-bool ListenerAudio_MasterVolume::getInfo(std::wstring& outString)
+float ListenerAudio_MasterVolume::getValue()
 {
     float currentVol = 0;
     g_pVolumeControl->GetMasterVolumeLevelScalar(&currentVol);
-    outString = L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
-    return true;
+    // outString = L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
+    return currentVol;
 }
 
 //
@@ -154,7 +154,6 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
         PostMessage(AudioObserver::get().hNotify, WM_REFRESH_VOLUMES, 0, 0);
     }
 }
-
 
 }
 

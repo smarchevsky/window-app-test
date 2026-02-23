@@ -3,6 +3,7 @@
 #include <Windows.h>
 
 #include <string>
+#include <vector>
 
 enum {
     _____WM_USER = WM_USER,
@@ -27,7 +28,7 @@ class ListenerAudio_MasterVolume {
 public:
     void init(HWND callbackWnd);
     void uninit();
-    bool getInfo(std::wstring& outString);
+    float getValue();
 
     static ListenerAudio_MasterVolume& get()
     {

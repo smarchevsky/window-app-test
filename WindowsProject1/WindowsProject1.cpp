@@ -33,15 +33,6 @@ HWND g_labelVolMaster;
 HWND g_labelVolApps;
 HBRUSH hBrush = CreateSolidBrush(RGB(100, 100, 250));
 
-void drawSquareCodeExample(HDC hdc)
-{
-    RECT rect { 000, 000, 600, 600 };
-    FillRect(hdc, &rect, hBrush);
-
-    SetBkMode(hdc, TRANSPARENT);
-    DrawText(hdc, L"Button", -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-}
-
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR lpCmdLine,
@@ -60,7 +51,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_WINDOWSPROJECT1, szWindowClass, MAX_LOADSTRING);
 
-    // CREATING WINDOW
     HWND hWnd;
     {
         WNDCLASSEXW wcex;
@@ -90,11 +80,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     PostMessage(hWnd, WM_PAINT, 0, 0); // to draw square initially!
 
-    g_labelVolMaster = CreateWindowW(L"STATIC", L"Volume: 0%", WS_VISIBLE | WS_CHILD,
-        10, 10, 600, 100, hWnd, nullptr, hInstance, nullptr);
-
-    g_labelVolApps = CreateWindowW(L"STATIC", L"", WS_VISIBLE | WS_CHILD,
-        10, 140, 600, 600, hWnd, nullptr, hInstance, nullptr);
+    // g_labelVolMaster = CreateWindowW(L"STATIC", L"Volume: 0%", WS_VISIBLE | WS_CHILD,
+    //     10, 10, 600, 100, hWnd, nullptr, hInstance, nullptr);
+    //
+    // g_labelVolApps = CreateWindowW(L"STATIC", L"", WS_VISIBLE | WS_CHILD,
+    //     10, 140, 600, 600, hWnd, nullptr, hInstance, nullptr);
 
     ListenerAudio_MasterVolume::get().init(hWnd);
     ListenerAudio_AllApplications::get().init(hWnd);
@@ -111,15 +101,38 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     return (int)msg.wParam;
 }
-
 std::wstring textInfoVolMaster, textInfoVolApps;
+
+void drawSquareCodeExample(HDC hdc)
+{
+    RECT rect { 000, 000, 600, 600 };
+    FillRect(hdc, &rect, hBrush);
+
+    SetBkMode(hdc, TRANSPARENT);
+    DrawText(hdc, L"Button", -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+}
+
+struct CustomSlider {
+    float value = .4f;
+    static constexpr int margin = 10;
+    int width = 100;
+    void Draw(HDC hdc, const RECT& windowRect)
+    {
+        float height = (windowRect.bottom - 2 * margin) * (1.f - value);
+        RECT rect { margin, margin + height, width - margin, windowRect.bottom - margin };
+        if (rect.right > rect.left && rect.bottom > rect.top)
+            FillRect(hdc, &rect, hBrush);
+    }
+};
+
+CustomSlider slider;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
     case WM_REFRESH_MASTER_VOL: {
-        ListenerAudio_MasterVolume::get().getInfo(textInfoVolMaster);
-        SetWindowTextW(g_labelVolMaster, textInfoVolMaster.c_str());
+        slider.value = ListenerAudio_MasterVolume::get().getValue();
+        InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }
 
@@ -149,7 +162,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_PAINT: {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
-        drawSquareCodeExample(hdc);
+        RECT windowRect;
+        GetClientRect(hWnd, &windowRect);
+        slider.Draw(hdc, windowRect);
+
         EndPaint(hWnd, &ps);
     } break;
 
