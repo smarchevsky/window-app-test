@@ -43,72 +43,11 @@ void CreateConsole()
 
 HWND g_label;
 HWND g_hEdit;
-IAudioSessionManager2* g_pSessionManager;
-class AudioObserver* g_Observer;
+// IAudioSessionManager2* g_pSessionManager;
 
 //
 // AUDIO
 //
-
-std::wstring GetProcessName(DWORD pid)
-{
-    if (pid == 0)
-        return L"System Sounds";
-    TCHAR szName[MAX_PATH] = TEXT("<unknown>");
-    HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (hProc) {
-        GetModuleBaseName(hProc, NULL, szName, MAX_PATH);
-        CloseHandle(hProc);
-    }
-    return szName;
-}
-
-class AudioObserver : public IAudioSessionEvents, public IAudioSessionNotification {
-public:
-    HWND hNotify;
-    AudioObserver(HWND hwnd)
-        : hNotify(hwnd)
-    {
-    }
-
-    // IUnknown
-    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) { return E_NOINTERFACE; }
-    STDMETHODIMP_(ULONG)
-    AddRef() { return 1; }
-    STDMETHODIMP_(ULONG)
-    Release() { return 1; }
-
-    // Triggered when a NEW app starts playing audio
-    STDMETHODIMP OnSessionCreated(IAudioSessionControl* pNewSession)
-    {
-        pNewSession->RegisterAudioSessionNotification(this); // Watch this new app too
-        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0);
-        return S_OK;
-    }
-
-    // Triggered when an app volume changes in the mixer
-    STDMETHODIMP OnSimpleVolumeChanged(float NewVolume, BOOL NewMute, LPCGUID EventContext)
-    {
-        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0);
-        return S_OK;
-    }
-
-    // Boilerplate for IAudioSessionEvents
-    STDMETHODIMP OnDisplayNameChanged(LPCWSTR, LPCGUID) override { return S_OK; }
-    STDMETHODIMP OnIconPathChanged(LPCWSTR, LPCGUID) { return S_OK; }
-    STDMETHODIMP OnChannelVolumeChanged(DWORD, float[], DWORD, LPCGUID) { return S_OK; }
-    STDMETHODIMP OnGroupingParamChanged(LPCGUID, LPCGUID) { return S_OK; }
-    STDMETHODIMP OnStateChanged(AudioSessionState State)
-    {
-        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0); // Handles app closing
-        return S_OK;
-    }
-    STDMETHODIMP OnSessionDisconnected(AudioSessionDisconnectReason)
-    {
-        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0);
-        return S_OK;
-    }
-};
 
 HWINEVENTHOOK g_hook = NULL;
 void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
@@ -126,50 +65,6 @@ void RefreshMasterVol()
     ListenerAudio_MasterVolume::get().getEndPointVolume()->GetMasterVolumeLevelScalar(&currentVol);
     std::wstring text = L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
     SetWindowTextW(g_label, text.c_str());
-}
-
-void RefreshUI()
-{
-    if (!g_pSessionManager)
-        return;
-
-    IAudioSessionEnumerator* pEnum = NULL;
-    if (SUCCEEDED(g_pSessionManager->GetSessionEnumerator(&pEnum))) {
-        int count = 0;
-        pEnum->GetCount(&count);
-
-        std::wstring output = L"App Volumes:\r\n\r\n";
-
-        for (int i = 0; i < count; i++) {
-            IAudioSessionControl* pControl = NULL;
-            if (SUCCEEDED(pEnum->GetSession(i, &pControl))) {
-
-                IAudioSessionControl2* pControl2 = NULL;
-                if (SUCCEEDED(pControl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pControl2))) {
-
-                    AudioSessionState state;
-                    pControl2->GetState(&state);
-
-                    if (state != AudioSessionStateExpired) {
-                        DWORD pid = 0;
-                        pControl2->GetProcessId(&pid);
-
-                        ISimpleAudioVolume* pVol = NULL;
-                        if (SUCCEEDED(pControl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol))) {
-                            float vol = 0;
-                            pVol->GetMasterVolume(&vol);
-                            output += GetProcessName(pid) + L": " + std::to_wstring((int)(vol * 100)) + L"%\r\n";
-                            pVol->Release(); // Release Volume
-                        }
-                    }
-                    pControl2->Release(); // Release Control2
-                }
-                pControl->Release(); // Release Control
-            }
-        }
-        SetWindowTextW(g_hEdit, output.c_str());
-        pEnum->Release(); // Release Enumerator
-    }
 }
 
 HBRUSH hBrush;
@@ -252,16 +147,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             WS_VISIBLE | WS_CHILD, 10, 10, 360, 440,
             hWnd, nullptr, hInstance, nullptr);
 
-        IMMDeviceEnumerator* pDevEnum = NULL;
-        IMMDevice* pDev = NULL;
-        CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pDevEnum);
-        pDevEnum->GetDefaultAudioEndpoint(eRender, eMultimedia, &pDev);
-        pDev->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, NULL, (void**)&g_pSessionManager);
-        g_Observer = new AudioObserver(hWnd);
-        g_pSessionManager->RegisterSessionNotification(g_Observer); // Watch for NEW apps
-        RefreshUI();
-        pDev->Release();
-        pDevEnum->Release();
+        ListenerAudio_AllApplications::get().init(hWnd);
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSPROJECT1));
@@ -286,7 +172,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return 0;
     }
     case WM_REFRESH_VOLUMES:
-        RefreshUI();
+        SetWindowTextW(g_hEdit, ListenerAudio_AllApplications::get().getInfo().c_str());
         return 0;
 
     case WM_COMMAND: {

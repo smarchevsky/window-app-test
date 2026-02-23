@@ -2,6 +2,8 @@
 
 #include <Windows.h>
 
+#include <string>
+
 enum {
     _____WM_USER = WM_USER,
     WM_REFRESH_MASTER_VOL,
@@ -36,21 +38,21 @@ private:
 // APPLICATIONS
 //
 
-// class ListenerAudio_AllApplications {
-//     IAudioSessionManager2* g_pSessionManager;
-//
-// public:
-//
-//     void init(HWND hwnd);
-//     void uninit();
-//     void RefreshUI();
-//
-//     static ListenerAudio_AllApplications& get()
-//     {
-//         static ListenerAudio_AllApplications instance;
-//         return instance;
-//     }
-//
-// private:
-//     ListenerAudio_AllApplications() = default;
-// };
+class IAudioSessionManager2;
+class ListenerAudio_AllApplications {
+    IAudioSessionManager2* g_pSessionManager;
+
+public:
+    void init(HWND hwnd);
+    void uninit();
+    std::wstring getInfo();
+
+    static ListenerAudio_AllApplications& get()
+    {
+        static ListenerAudio_AllApplications instance;
+        return instance;
+    }
+
+private:
+    ListenerAudio_AllApplications() = default;
+};
