@@ -114,21 +114,8 @@ void drawSquareCodeExample(HDC hdc)
 
 std::vector<AppAudioInfo> appInfos;
 
-static constexpr int sliderWidth = 100;
-struct CustomSlider {
-    float value = .4f;
-    static constexpr int margin = 10;
-    void Draw(HDC hdc, LONG windowHeight, int leftOffset)
-    {
-        float height = (windowHeight - 2 * margin) * (1.f - value);
-        RECT rect { leftOffset + margin, margin + height, leftOffset + sliderWidth - margin, windowHeight - margin };
-        if (rect.right > rect.left && rect.bottom > rect.top)
-            FillRect(hdc, &rect, hBrush);
-    }
-};
-
-std::vector<CustomSlider> sliders;
 CustomSlider masterSlider;
+std::vector<CustomSlider> sliders;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -144,7 +131,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         sliders.resize(0);
         for (auto& appInfo : appInfos) {
-            CustomSlider slider { appInfo.currentVol };
+            CustomSlider slider { appInfo.currentVol, appInfo.pid };
             sliders.emplace_back(slider);
         }
 
@@ -176,10 +163,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         RECT windowRect;
         GetClientRect(hWnd, &windowRect);
 
-        masterSlider.Draw(hdc, windowRect.bottom, 0);
+        masterSlider.Draw(hdc, hBrush, windowRect.bottom, 0);
         int offset = sliderWidth + 30;
         for (auto& slider : sliders) {
-            slider.Draw(hdc, windowRect.bottom, offset);
+            slider.Draw(hdc, hBrush, windowRect.bottom, offset);
             offset += sliderWidth;
         }
 
@@ -189,6 +176,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         ListenerAudio_MasterVolume::get().uninit();
         ListenerAudio_AllApplications::get().uninit();
+        IconManager::get().uninit();
         PostQuitMessage(0);
         break;
 

@@ -241,7 +241,7 @@ bool ListenerAudio_AllApplications::getInfo(std::vector<AppAudioInfo>& appInfos)
                             pVol->GetMasterVolume(&vol);
 
                             AppAudioInfo appInfo {};
-                            appInfo.appId = pid;
+                            appInfo.pid = pid;
                             appInfo.currentVol = vol;
                             appInfo.appName = GetProcessName(pid);
                             appInfos.emplace_back(appInfo);
@@ -260,4 +260,83 @@ bool ListenerAudio_AllApplications::getInfo(std::vector<AppAudioInfo>& appInfos)
     }
 
     return true;
+}
+
+//
+// NON AUDIO
+//
+
+//
+// ICON
+//
+
+void IconManager::uninit()
+{
+    for (auto& pair : cachedProcessIcons) {
+        auto& iconInfo = pair.second;
+        if (iconInfo.hSmall)
+            DestroyIcon(iconInfo.hSmall);
+        if (iconInfo.hLarge)
+            DestroyIcon(iconInfo.hLarge);
+    }
+}
+
+IconInfo IconManager::getIconFromProcess(DWORD pid)
+{
+    IconInfo result = {};
+
+    auto foundIconIt = cachedProcessIcons.find(pid);
+    if (foundIconIt == cachedProcessIcons.end()) {
+        HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+        if (!hProcess)
+            return result;
+
+        wchar_t exePath[MAX_PATH];
+        DWORD size = MAX_PATH;
+
+        if (!QueryFullProcessImageNameW(hProcess, 0, exePath, &size)) {
+            CloseHandle(hProcess);
+            return result;
+        }
+        CloseHandle(hProcess);
+
+        UINT icons = ExtractIconExW(exePath, 0, &result.hLarge, &result.hSmall, 1);
+        if (icons == 0)
+            return result;
+
+        cachedProcessIcons[pid] = result;
+        wprintf(L"Stored new icon for: %s\n", exePath);
+    } else {
+        result = foundIconIt->second;
+    }
+
+    return result;
+}
+
+//
+// SLIDER
+//
+
+// #include <shellapi.h>
+//  #pragma comment(lib, "Shell32.lib")
+
+void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset)
+{
+    const float bottom = windowHeight - margin;
+    const float height = (bottom - margin) * (1.f - value);
+
+    RECT rect {
+        leftOffset + margin, margin + height,
+        leftOffset + sliderWidth - margin, bottom
+    };
+
+    if (rect.right > rect.left && rect.bottom > rect.top)
+        FillRect(hdc, &rect, brush);
+
+    constexpr int iconSize = 32;
+
+    IconInfo ii = IconManager::get().getIconFromProcess(pid);
+    if (ii.hLarge)
+        DrawIconEx(hdc, leftOffset + (sliderWidth - iconSize) / 2, bottom - sliderWidth / 2,
+            ii.hLarge, iconSize, iconSize, 0, NULL, DI_NORMAL);
 }

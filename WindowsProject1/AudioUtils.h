@@ -3,6 +3,7 @@
 #include <Windows.h>
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 enum {
@@ -45,7 +46,7 @@ private:
 //
 
 struct AppAudioInfo {
-    DWORD appId;
+    DWORD pid;
     float currentVol;
     std::wstring appName;
 };
@@ -68,4 +69,44 @@ public:
 
 private:
     ListenerAudio_AllApplications() = default;
+};
+
+//
+// NON AUDIO
+//
+
+//
+// ICON
+//
+
+struct IconInfo {
+    HICON hSmall, hLarge;
+};
+
+class IconManager {
+    IconManager() = default;
+
+    std::unordered_map<DWORD, IconInfo> cachedProcessIcons;
+
+public:
+    void uninit();
+    static IconManager& get()
+    {
+        static IconManager instance;
+        return instance;
+    }
+
+    IconInfo getIconFromProcess(DWORD pid);
+};
+
+//
+// SLIDER
+//
+
+static constexpr int sliderWidth = 100;
+struct CustomSlider {
+    static constexpr int margin = 10;
+    float value;
+    DWORD pid;
+    void Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset);
 };
