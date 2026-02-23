@@ -208,9 +208,9 @@ std::wstring GetProcessName(DWORD pid)
     return szName;
 };
 
-bool ListenerAudio_AllApplications::getInfo(std::wstring& outInfo)
+bool ListenerAudio_AllApplications::getInfo(std::vector<AppAudioInfo>& appInfos)
 {
-    outInfo = L"App Volumes:\r\n\r\n";
+    appInfos.resize(0);
 
     if (!g_pSessionManager)
         return false;
@@ -239,7 +239,14 @@ bool ListenerAudio_AllApplications::getInfo(std::wstring& outInfo)
                         if (SUCCEEDED(pControl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol))) {
                             float vol = 0;
                             pVol->GetMasterVolume(&vol);
-                            outInfo += GetProcessName(pid) + L": " + std::to_wstring((int)(vol * 100)) + L"%\r\n";
+
+                            AppAudioInfo appInfo {};
+                            appInfo.appId = pid;
+                            appInfo.currentVol = vol;
+                            appInfo.appName = GetProcessName(pid);
+                            appInfos.emplace_back(appInfo);
+
+                            // outInfo += GetProcessName(pid) + L": " + std::to_wstring((int)(vol * 100)) + L"%\r\n";
                             pVol->Release();
                         }
                     }

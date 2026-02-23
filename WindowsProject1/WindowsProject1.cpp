@@ -112,33 +112,44 @@ void drawSquareCodeExample(HDC hdc)
     DrawText(hdc, L"Button", -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 }
 
+std::vector<AppAudioInfo> appInfos;
+
+static constexpr int sliderWidth = 100;
 struct CustomSlider {
     float value = .4f;
     static constexpr int margin = 10;
-    int width = 100;
-    void Draw(HDC hdc, const RECT& windowRect)
+    void Draw(HDC hdc, LONG windowHeight, int leftOffset)
     {
-        float height = (windowRect.bottom - 2 * margin) * (1.f - value);
-        RECT rect { margin, margin + height, width - margin, windowRect.bottom - margin };
+        float height = (windowHeight - 2 * margin) * (1.f - value);
+        RECT rect { leftOffset + margin, margin + height, leftOffset + sliderWidth - margin, windowHeight - margin };
         if (rect.right > rect.left && rect.bottom > rect.top)
             FillRect(hdc, &rect, hBrush);
     }
 };
 
-CustomSlider slider;
+std::vector<CustomSlider> sliders;
+CustomSlider masterSlider;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
     case WM_REFRESH_MASTER_VOL: {
-        slider.value = ListenerAudio_MasterVolume::get().getValue();
+        masterSlider.value = ListenerAudio_MasterVolume::get().getValue();
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }
 
     case WM_REFRESH_VOLUMES:
-        ListenerAudio_AllApplications::get().getInfo(textInfoVolApps);
-        SetWindowTextW(g_labelVolApps, textInfoVolApps.c_str());
+        ListenerAudio_AllApplications::get().getInfo(appInfos);
+
+        sliders.resize(0);
+        for (auto& appInfo : appInfos) {
+            CustomSlider slider { appInfo.currentVol };
+            sliders.emplace_back(slider);
+        }
+
+        InvalidateRect(hWnd, NULL, TRUE);
+        //  SetWindowTextW(g_labelVolApps, textInfoVolApps.c_str());
         return 0;
 
     case WM_COMMAND: {
@@ -164,7 +175,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HDC hdc = BeginPaint(hWnd, &ps);
         RECT windowRect;
         GetClientRect(hWnd, &windowRect);
-        slider.Draw(hdc, windowRect);
+
+        masterSlider.Draw(hdc, windowRect.bottom, 0);
+        int offset = sliderWidth + 30;
+        for (auto& slider : sliders) {
+            slider.Draw(hdc, windowRect.bottom, offset);
+            offset += sliderWidth;
+        }
 
         EndPaint(hWnd, &ps);
     } break;

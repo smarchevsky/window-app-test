@@ -44,6 +44,12 @@ private:
 // APPLICATIONS
 //
 
+struct AppAudioInfo {
+    DWORD appId;
+    float currentVol;
+    std::wstring appName;
+};
+
 class IAudioSessionManager2;
 class ListenerAudio_AllApplications {
     IAudioSessionManager2* g_pSessionManager;
@@ -52,7 +58,7 @@ class ListenerAudio_AllApplications {
 public:
     void init(HWND hwnd);
     void uninit();
-    bool getInfo(std::wstring& outString);
+    bool getInfo(std::vector<AppAudioInfo>& appInfos);
 
     static ListenerAudio_AllApplications& get()
     {
