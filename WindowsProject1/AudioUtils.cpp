@@ -113,14 +113,14 @@ public:
     STDMETHODIMP OnSessionCreated(IAudioSessionControl* pNewSession)
     {
         pNewSession->RegisterAudioSessionNotification(this); // Watch this new app too
-        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0);
+        PostMessage(hNotify, WM_REFRESH_APP_VOLUMES, 0, 0);
         return S_OK;
     }
 
     // Triggered when an app volume changes in the mixer
     STDMETHODIMP OnSimpleVolumeChanged(float NewVolume, BOOL NewMute, LPCGUID EventContext)
     {
-        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0);
+        PostMessage(hNotify, WM_REFRESH_APP_VOLUMES, 0, 0);
         return S_OK;
     }
 
@@ -131,12 +131,12 @@ public:
     STDMETHODIMP OnGroupingParamChanged(LPCGUID, LPCGUID) { return S_OK; }
     STDMETHODIMP OnStateChanged(AudioSessionState State)
     {
-        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0); // Handles app closing
+        PostMessage(hNotify, WM_REFRESH_APP_VOLUMES, 0, 0); // Handles app closing
         return S_OK;
     }
     STDMETHODIMP OnSessionDisconnected(AudioSessionDisconnectReason)
     {
-        PostMessage(hNotify, WM_REFRESH_VOLUMES, 0, 0);
+        PostMessage(hNotify, WM_REFRESH_APP_VOLUMES, 0, 0);
         return S_OK;
     }
 
@@ -151,7 +151,7 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
     LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime)
 {
     if (idObject == OBJID_WINDOW && idChild == INDEXID_CONTAINER) {
-        PostMessage(AudioObserver::get().hNotify, WM_REFRESH_VOLUMES, 0, 0);
+        PostMessage(AudioObserver::get().hNotify, WM_REFRESH_APP_VOLUMES, 0, 0);
     }
 }
 
@@ -170,7 +170,7 @@ void ListenerAudio_AllApplications::init(HWND callbackWnd)
     g_pSessionManager->RegisterSessionNotification(&AudioObserver::get()); // Watch for NEW apps
 
     // instant refresh ?
-    PostMessage(callbackWnd, WM_REFRESH_VOLUMES, 0, 0);
+    PostMessage(callbackWnd, WM_REFRESH_APP_VOLUMES, 0, 0);
 
     pDev->Release();
     pDevEnum->Release();

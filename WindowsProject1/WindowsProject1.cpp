@@ -139,7 +139,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return 0;
     }
 
-    case WM_REFRESH_VOLUMES:
+    case WM_REFRESH_APP_VOLUMES:
         ListenerAudio_AllApplications::get().getInfo(appInfos);
 
         sliders.resize(0);

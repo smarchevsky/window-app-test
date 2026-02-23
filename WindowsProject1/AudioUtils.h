@@ -8,7 +8,7 @@
 enum {
     _____WM_USER = WM_USER,
     WM_REFRESH_MASTER_VOL,
-    WM_REFRESH_VOLUMES,
+    WM_REFRESH_APP_VOLUMES,
 };
 
 class CoinitializeWrapper {
