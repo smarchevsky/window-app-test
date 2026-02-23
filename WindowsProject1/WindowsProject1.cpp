@@ -4,6 +4,8 @@
 #include "WindowsProject1.h"
 #include "framework.h"
 
+#include "AudioUtils.h"
+
 #include <endpointvolume.h> // IAudioEndpointVolume, IAudioEndpointVolumeCallback
 #include <mmdeviceapi.h> // IMMDevice, IMMDeviceEnumerator
 
@@ -16,8 +18,6 @@
 #include <string>
 
 #define MAX_LOADSTRING 100
-#define WM_REFRESH_MASTER_VOL (WM_USER + 1)
-#define WM_REFRESH_VOLUMES (WM_USER + 2)
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
@@ -42,61 +42,9 @@ void CreateConsole()
 //
 
 HWND g_label;
-HWND g_hEdit = NULL;
-IAudioEndpointVolume* g_pVolumeControl;
-IAudioSessionManager2* g_pSessionManager = NULL;
-class AudioObserver* g_Observer = NULL;
-int masterVol = 0;
-
-class VolumeChangeListener : public IAudioEndpointVolumeCallback {
-public:
-    // COM boilerplate
-    STDMETHODIMP QueryInterface(REFIID iid, void** ppv)
-    {
-        if (iid == __uuidof(IUnknown) || iid == __uuidof(IAudioEndpointVolumeCallback)) {
-            *ppv = static_cast<IAudioEndpointVolumeCallback*>(this);
-            return S_OK;
-        }
-        return E_NOINTERFACE;
-    }
-    STDMETHODIMP_(ULONG)
-    AddRef() { return 1; }
-    STDMETHODIMP_(ULONG)
-    Release() { return 1; }
-
-    // This triggers when volume changes
-    STDMETHODIMP OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pData)
-    {
-        int volumePercent = (int)(pData->fMasterVolume * 100 + 0.5f);
-        masterVol = volumePercent;
-        PostMessage(GetParent(g_hEdit), WM_REFRESH_MASTER_VOL, 0, 0);
-
-        return S_OK;
-    }
-} g_VolumeCallback;
-
-// --- 2. Initialize WASAPI ---
-void initAudio()
-{
-    IMMDeviceEnumerator* pEnumerator = NULL;
-    IMMDevice* pDevice = NULL;
-
-    CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
-    pEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &pDevice);
-    pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&g_pVolumeControl);
-
-    // Get initial volume
-    float currentVol = 0;
-    g_pVolumeControl->GetMasterVolumeLevelScalar(&currentVol);
-    std::wstring text = L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
-    SetWindowTextW(g_label, text.c_str());
-
-    // Register our listener
-    g_pVolumeControl->RegisterControlChangeNotify(&g_VolumeCallback);
-
-    pDevice->Release();
-    pEnumerator->Release();
-}
+HWND g_hEdit;
+IAudioSessionManager2* g_pSessionManager;
+class AudioObserver* g_Observer;
 
 //
 // AUDIO
@@ -174,7 +122,9 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
 // WM_REFRESH_MASTER_VOL
 void RefreshMasterVol()
 {
-    std::wstring text = L"Volume: " + std::to_wstring(masterVol) + L"%";
+    float currentVol = 0;
+    ListenerAudio_MasterVolume::get().getEndPointVolume()->GetMasterVolumeLevelScalar(&currentVol);
+    std::wstring text = L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
     SetWindowTextW(g_label, text.c_str());
 }
 
@@ -295,7 +245,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             WS_VISIBLE | WS_CHILD, 350, 40, 200, 30,
             hWnd, nullptr, hInstance, nullptr);
 
-        initAudio();
+        ListenerAudio_MasterVolume::get().init(hWnd);
     }
     {
         g_hEdit = CreateWindowW(L"STATIC", L"",
@@ -365,10 +315,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     } break;
 
     case WM_DESTROY:
-        if (g_pVolumeControl) {
-            g_pVolumeControl->UnregisterControlChangeNotify(&g_VolumeCallback);
-            g_pVolumeControl->Release();
-        }
+        ListenerAudio_MasterVolume::get().uninit();
+
         if (g_hook)
             UnhookWinEvent(g_hook);
         PostQuitMessage(0);
