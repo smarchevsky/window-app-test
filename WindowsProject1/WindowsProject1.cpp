@@ -29,22 +29,12 @@ void CreateConsole()
     std::ios::sync_with_stdio();
 }
 
-//
-// AUDIO
-//
+HWND g_labelVolMaster;
+HWND g_labelVolApps;
+HBRUSH hBrush = CreateSolidBrush(RGB(100, 100, 250));
 
-HWND g_label;
-HWND g_hEdit;
-
-//
-// AUDIO
-//
-
-HBRUSH hBrush;
 void drawSquareCodeExample(HDC hdc)
 {
-    if (hBrush == nullptr)
-        hBrush = CreateSolidBrush(RGB(100, 100, 250));
     RECT rect { 000, 000, 600, 600 };
     FillRect(hdc, &rect, hBrush);
 
@@ -100,8 +90,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     PostMessage(hWnd, WM_PAINT, 0, 0); // to draw square initially!
 
-    g_label = CreateWindowW(L"STATIC", L"Volume: 0%", WS_VISIBLE | WS_CHILD, 350, 40, 200, 30, hWnd, nullptr, hInstance, nullptr);
-    g_hEdit = CreateWindowW(L"STATIC", L"", WS_VISIBLE | WS_CHILD, 10, 10, 360, 440, hWnd, nullptr, hInstance, nullptr);
+    g_labelVolMaster = CreateWindowW(L"STATIC", L"Volume: 0%", WS_VISIBLE | WS_CHILD,
+        10, 10, 600, 100, hWnd, nullptr, hInstance, nullptr);
+
+    g_labelVolApps = CreateWindowW(L"STATIC", L"", WS_VISIBLE | WS_CHILD,
+        10, 140, 600, 600, hWnd, nullptr, hInstance, nullptr);
 
     ListenerAudio_MasterVolume::get().init(hWnd);
     ListenerAudio_AllApplications::get().init(hWnd);
@@ -123,12 +116,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
     case WM_REFRESH_MASTER_VOL: {
-        SetWindowTextW(g_label, ListenerAudio_MasterVolume::get().getInfo().c_str());
+        SetWindowTextW(g_labelVolMaster, ListenerAudio_MasterVolume::get().getInfo().c_str());
         return 0;
     }
 
     case WM_REFRESH_VOLUMES:
-        SetWindowTextW(g_hEdit, ListenerAudio_AllApplications::get().getInfo().c_str());
+        SetWindowTextW(g_labelVolApps, ListenerAudio_AllApplications::get().getInfo().c_str());
         return 0;
 
     case WM_COMMAND: {
