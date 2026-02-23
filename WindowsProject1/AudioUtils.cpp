@@ -1,12 +1,21 @@
 #include "AudioUtils.h"
 
+#include <endpointvolume.h> // IAudioEndpointVolume, IAudioEndpointVolumeCallback
+#include <mmdeviceapi.h> // IMMDevice, IMMDeviceEnumerator
+
 #include <audiopolicy.h>
-#include <endpointvolume.h>
-#include <mmdeviceapi.h>
 #include <psapi.h>
 
 // #include <stdio.h>
 #include <string>
+
+// S_OK, S_FALSE
+CoinitializeWrapper::CoinitializeWrapper() { (void)CoInitialize(NULL); }
+CoinitializeWrapper::~CoinitializeWrapper() { CoUninitialize(); }
+
+//
+// MASTER
+//
 
 namespace {
 class VolumeChangeListener : public IAudioEndpointVolumeCallback {
@@ -80,6 +89,13 @@ void ListenerAudio_MasterVolume::uninit()
         g_pVolumeControl->UnregisterControlChangeNotify(&VolumeChangeListener::get());
         g_pVolumeControl->Release();
     }
+}
+
+std::wstring ListenerAudio_MasterVolume::getInfo()
+{
+    float currentVol = 0;
+    ListenerAudio_MasterVolume::get().getEndPointVolume()->GetMasterVolumeLevelScalar(&currentVol);
+    return L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
 }
 
 //

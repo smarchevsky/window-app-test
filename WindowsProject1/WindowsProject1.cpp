@@ -6,14 +6,6 @@
 
 #include "AudioUtils.h"
 
-#include <endpointvolume.h> // IAudioEndpointVolume, IAudioEndpointVolumeCallback
-#include <mmdeviceapi.h> // IMMDevice, IMMDeviceEnumerator
-
-#include <audiopolicy.h>
-#include <psapi.h>
-
-// #include <fcntl.h>
-// #include <io.h>
 #include <iostream>
 #include <string>
 
@@ -58,15 +50,6 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
     }
 }
 
-// WM_REFRESH_MASTER_VOL
-void RefreshMasterVol()
-{
-    float currentVol = 0;
-    ListenerAudio_MasterVolume::get().getEndPointVolume()->GetMasterVolumeLevelScalar(&currentVol);
-    std::wstring text = L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
-    SetWindowTextW(g_label, text.c_str());
-}
-
 HBRUSH hBrush;
 void drawSquareCodeExample(HDC hdc)
 {
@@ -86,7 +69,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     CreateConsole();
 
-    (void)CoInitialize(NULL); // S_OK, S_FALSE
+    CoinitializeWrapper coinitializeRAII;
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     UNREFERENCED_PARAMETER(hPrevInstance);
@@ -160,7 +143,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
     }
 
-    CoUninitialize();
     return (int)msg.wParam;
 }
 
@@ -168,9 +150,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
     case WM_REFRESH_MASTER_VOL: {
-        RefreshMasterVol();
+        SetWindowTextW(g_label, ListenerAudio_MasterVolume::get().getInfo().c_str());
         return 0;
     }
+
     case WM_REFRESH_VOLUMES:
         SetWindowTextW(g_hEdit, ListenerAudio_AllApplications::get().getInfo().c_str());
         return 0;

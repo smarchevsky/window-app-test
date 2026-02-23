@@ -10,6 +10,12 @@ enum {
     WM_REFRESH_VOLUMES
 };
 
+class CoinitializeWrapper {
+public:
+    CoinitializeWrapper();
+    ~CoinitializeWrapper();
+};
+
 //
 // MASTER
 //
@@ -21,6 +27,7 @@ class ListenerAudio_MasterVolume {
 public:
     void init(HWND callbackWnd);
     void uninit();
+    std::wstring getInfo();
 
     IAudioEndpointVolume* getEndPointVolume() { return g_pVolumeControl; }
 
