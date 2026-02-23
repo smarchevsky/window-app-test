@@ -85,11 +85,12 @@ void ListenerAudio_MasterVolume::uninit()
     }
 }
 
-std::wstring ListenerAudio_MasterVolume::getInfo()
+bool ListenerAudio_MasterVolume::getInfo(std::wstring& outString)
 {
     float currentVol = 0;
-    ListenerAudio_MasterVolume::get().getEndPointVolume()->GetMasterVolumeLevelScalar(&currentVol);
-    return L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
+    g_pVolumeControl->GetMasterVolumeLevelScalar(&currentVol);
+    outString = L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
+    return true;
 }
 
 //
@@ -153,6 +154,8 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
         PostMessage(AudioObserver::get().hNotify, WM_REFRESH_VOLUMES, 0, 0);
     }
 }
+
+
 }
 
 void ListenerAudio_AllApplications::init(HWND callbackWnd)
@@ -193,31 +196,31 @@ void ListenerAudio_AllApplications::uninit()
     AudioObserver::get().hNotify = nullptr;
 }
 
-std::wstring ListenerAudio_AllApplications::getInfo()
+std::wstring GetProcessName(DWORD pid)
 {
-    std::wstring text;
+    if (pid == 0)
+        return L"System Sounds";
+    TCHAR szName[MAX_PATH] = TEXT("<unknown>");
+    HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProc) {
+        GetModuleBaseName(hProc, NULL, szName, MAX_PATH);
+        CloseHandle(hProc);
+    }
+    return szName;
+};
 
-    auto GetProcessName = [](DWORD pid) -> std::wstring {
-        if (pid == 0)
-            return L"System Sounds";
-        TCHAR szName[MAX_PATH] = TEXT("<unknown>");
-        HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-        if (hProc) {
-            GetModuleBaseName(hProc, NULL, szName, MAX_PATH);
-            CloseHandle(hProc);
-        }
-        return szName;
-    };
+bool ListenerAudio_AllApplications::getInfo(std::wstring& outInfo)
+{
+    outInfo = L"App Volumes:\r\n\r\n";
 
     if (!g_pSessionManager)
-        return text;
+        return false;
 
     IAudioSessionEnumerator* pEnum = NULL;
     if (SUCCEEDED(g_pSessionManager->GetSessionEnumerator(&pEnum))) {
+        // printf("sessionEnumerator %p\n", pEnum);
         int count = 0;
         pEnum->GetCount(&count);
-
-        std::wstring output = L"App Volumes:\r\n\r\n";
 
         for (int i = 0; i < count; i++) {
             IAudioSessionControl* pControl = NULL;
@@ -237,7 +240,7 @@ std::wstring ListenerAudio_AllApplications::getInfo()
                         if (SUCCEEDED(pControl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol))) {
                             float vol = 0;
                             pVol->GetMasterVolume(&vol);
-                            output += GetProcessName(pid) + L": " + std::to_wstring((int)(vol * 100)) + L"%\r\n";
+                            outInfo += GetProcessName(pid) + L": " + std::to_wstring((int)(vol * 100)) + L"%\r\n";
                             pVol->Release();
                         }
                     }
@@ -246,9 +249,9 @@ std::wstring ListenerAudio_AllApplications::getInfo()
                 pControl->Release();
             }
         }
-        text = std::move(output);
 
         pEnum->Release();
     }
-    return text;
+
+    return true;
 }

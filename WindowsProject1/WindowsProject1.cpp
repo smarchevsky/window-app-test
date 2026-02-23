@@ -112,16 +112,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     return (int)msg.wParam;
 }
 
+std::wstring textInfoVolMaster, textInfoVolApps;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
     case WM_REFRESH_MASTER_VOL: {
-        SetWindowTextW(g_labelVolMaster, ListenerAudio_MasterVolume::get().getInfo().c_str());
+        ListenerAudio_MasterVolume::get().getInfo(textInfoVolMaster);
+        SetWindowTextW(g_labelVolMaster, textInfoVolMaster.c_str());
         return 0;
     }
 
     case WM_REFRESH_VOLUMES:
-        SetWindowTextW(g_labelVolApps, ListenerAudio_AllApplications::get().getInfo().c_str());
+        ListenerAudio_AllApplications::get().getInfo(textInfoVolApps);
+        SetWindowTextW(g_labelVolApps, textInfoVolApps.c_str());
         return 0;
 
     case WM_COMMAND: {

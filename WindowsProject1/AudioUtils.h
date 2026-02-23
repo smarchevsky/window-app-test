@@ -7,7 +7,7 @@
 enum {
     _____WM_USER = WM_USER,
     WM_REFRESH_MASTER_VOL,
-    WM_REFRESH_VOLUMES
+    WM_REFRESH_VOLUMES,
 };
 
 class CoinitializeWrapper {
@@ -27,9 +27,7 @@ class ListenerAudio_MasterVolume {
 public:
     void init(HWND callbackWnd);
     void uninit();
-    std::wstring getInfo();
-
-    IAudioEndpointVolume* getEndPointVolume() { return g_pVolumeControl; }
+    bool getInfo(std::wstring& outString);
 
     static ListenerAudio_MasterVolume& get()
     {
@@ -53,7 +51,7 @@ class ListenerAudio_AllApplications {
 public:
     void init(HWND hwnd);
     void uninit();
-    std::wstring getInfo();
+    bool getInfo(std::wstring& outString);
 
     static ListenerAudio_AllApplications& get()
     {
