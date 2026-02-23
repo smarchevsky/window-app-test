@@ -187,6 +187,10 @@ void ListenerAudio_AllApplications::uninit()
 {
     if (g_hook)
         UnhookWinEvent(g_hook);
+
+    if (g_pSessionManager)
+        g_pSessionManager->UnregisterSessionNotification(&AudioObserver::get()), g_pSessionManager = nullptr;
+    AudioObserver::get().hNotify = nullptr;
 }
 
 std::wstring ListenerAudio_AllApplications::getInfo()
