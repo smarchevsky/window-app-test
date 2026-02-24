@@ -107,7 +107,7 @@ public:
 // SLIDER
 //
 
-static constexpr int sliderWidth = 100;
+static constexpr int sliderWidth = 80;
 struct CustomSlider {
     static constexpr int margin = 10;
     float value;

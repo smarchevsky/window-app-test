@@ -383,6 +383,8 @@ void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset
         iconInfo = im.getIconFromProcess(pid);
     }
     if (iconInfo.hLarge)
-        DrawIconEx(hdc, leftOffset + (sliderWidth - iconInfo.width) / 2, bottom - sliderWidth / 2,
+        DrawIconEx(hdc, 
+            leftOffset + (sliderWidth - iconInfo.width) / 2, 
+            bottom - sliderWidth / 2  - iconInfo.width / 4,
             iconInfo.hLarge, 0, 0, 0, NULL, DI_NORMAL);
 }

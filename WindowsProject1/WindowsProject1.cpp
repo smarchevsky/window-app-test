@@ -126,7 +126,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return 0;
     }
 
-    case WM_REFRESH_APP_VOLUMES:
+    case WM_REFRESH_APP_VOLUMES: {
         ListenerAudio_AllApplications::get().getInfo(appInfos);
 
         sliders.resize(0);
@@ -136,14 +136,43 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         InvalidateRect(hWnd, NULL, TRUE);
-        //  SetWindowTextW(g_labelVolApps, textInfoVolApps.c_str());
-        return 0;
+    } break;
+
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+
+        HDC memDC = CreateCompatibleDC(hdc);
+        HBITMAP memBitmap = CreateCompatibleBitmap(hdc, rect.right - rect.left, rect.bottom - rect.top);
+        HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
+
+        auto drawDC = memDC;
+        FillRect(drawDC, &rect, (HBRUSH)(COLOR_WINDOW + 1));
+        masterSlider.Draw(drawDC, hBrush, rect.bottom, 0, true);
+        int offset = sliderWidth + 30;
+        for (auto& slider : sliders) {
+            slider.Draw(drawDC, hBrush, rect.bottom, offset);
+            offset += sliderWidth;
+        }
+
+        BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
+        SelectObject(memDC, oldBitmap);
+        DeleteObject(memBitmap);
+        DeleteDC(memDC);
+
+        EndPaint(hWnd, &ps);
+    } break;
+
+    case WM_ERASEBKGND: {
+        return 1; // no redraw bkg
+    }
 
     case WM_COMMAND: {
         int wmId = LOWORD(wParam);
         // Parse the menu selections:
         switch (wmId) {
-
         case IDM_ABOUT:
             DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
             break;
@@ -157,28 +186,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
     } break;
 
-    case WM_PAINT: {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hWnd, &ps);
-        RECT windowRect;
-        GetClientRect(hWnd, &windowRect);
-
-        masterSlider.Draw(hdc, hBrush, windowRect.bottom, 0, true);
-        int offset = sliderWidth + 30;
-        for (auto& slider : sliders) {
-            slider.Draw(hdc, hBrush, windowRect.bottom, offset);
-            offset += sliderWidth;
-        }
-
-        EndPaint(hWnd, &ps);
-    } break;
-
-    case WM_DESTROY:
+    case WM_DESTROY: {
         ListenerAudio_MasterVolume::get().uninit();
         ListenerAudio_AllApplications::get().uninit();
         IconManager::get().uninit();
         PostQuitMessage(0);
-        break;
+    } break;
 
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
