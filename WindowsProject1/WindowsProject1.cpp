@@ -117,6 +117,9 @@ std::vector<AppAudioInfo> appInfos;
 CustomSlider masterSlider;
 std::vector<CustomSlider> sliders;
 
+HDC memDC;
+HBITMAP memBitmap;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
@@ -138,29 +141,49 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         InvalidateRect(hWnd, NULL, TRUE);
     } break;
 
+    case WM_CREATE: {
+        memDC = CreateCompatibleDC(nullptr);
+    } break;
+
+    case WM_DESTROY: {
+        ListenerAudio_MasterVolume::get().uninit();
+        ListenerAudio_AllApplications::get().uninit();
+        IconManager::get().uninit();
+
+        DeleteObject(memBitmap);
+        DeleteDC(memDC);
+
+        PostQuitMessage(0);
+    } break;
+
+    case WM_SIZE: {
+        if (memBitmap)
+            DeleteObject(memBitmap);
+
+        HDC hdc = GetDC(hWnd);
+        memBitmap = CreateCompatibleBitmap(hdc, LOWORD(lParam), HIWORD(lParam));
+        ReleaseDC(hWnd, hdc);
+    } break;
+
     case WM_PAINT: {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
+
         RECT rect;
         GetClientRect(hWnd, &rect);
 
-        HDC memDC = CreateCompatibleDC(hdc);
-        HBITMAP memBitmap = CreateCompatibleBitmap(hdc, rect.right - rect.left, rect.bottom - rect.top);
         HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
 
-        auto drawDC = memDC;
-        FillRect(drawDC, &rect, (HBRUSH)(COLOR_WINDOW + 1));
-        masterSlider.Draw(drawDC, hBrush, rect.bottom, 0, true);
+        FillRect(memDC, &rect, (HBRUSH)(COLOR_WINDOW + 1));
+        masterSlider.Draw(memDC, hBrush, rect.bottom, 0, true);
         int offset = sliderWidth + 30;
         for (auto& slider : sliders) {
-            slider.Draw(drawDC, hBrush, rect.bottom, offset);
+            slider.Draw(memDC, hBrush, rect.bottom, offset);
             offset += sliderWidth;
         }
 
         BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
         SelectObject(memDC, oldBitmap);
-        DeleteObject(memBitmap);
-        DeleteDC(memDC);
 
         EndPaint(hWnd, &ps);
     } break;
@@ -184,13 +207,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         default:
             return DefWindowProc(hWnd, message, wParam, lParam);
         }
-    } break;
-
-    case WM_DESTROY: {
-        ListenerAudio_MasterVolume::get().uninit();
-        ListenerAudio_AllApplications::get().uninit();
-        IconManager::get().uninit();
-        PostQuitMessage(0);
     } break;
 
     default:
