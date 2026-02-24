@@ -78,9 +78,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // PostMessage(hWnd, WM_PAINT, 0, 0); // to draw square initially!
 
-    ListenerAudio_MasterVolume::get().init(hWnd);
-    ListenerAudio_AllApplications::get().init(hWnd);
-
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSPROJECT1));
 
     MSG msg;
@@ -115,6 +112,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         memDC = CreateCompatibleDC(nullptr);
         hLabel = CreateWindow(L"STATIC", L"Drag to move: X: 0, Y: 0",
             WS_VISIBLE | WS_CHILD, 20, 20, 300, 20, hWnd, NULL, NULL, NULL);
+        ListenerAudio_MasterVolume::get().init(hWnd);
+        ListenerAudio_AllApplications::get().init(hWnd);
         break;
     }
 
@@ -134,13 +133,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         cursorClientPos = cursorScreenPos;
         ScreenToClient(hWnd, &cursorClientPos);
 
-        auto sliderRectMaster = sliderMasterVol.getRect(rect.bottom, 0);
-
-        if (PtInRect(&sliderRectMaster, cursorClientPos)) {
-            SetWindowText(hLabel, L"Master captured");
+        float param;
+        if (sliderMasterVol.intersects(rect.bottom, 0, cursorClientPos, param)) {
+            SetWindowText(hLabel, (L"Master captured: " + std::to_wstring(param)).c_str());
+            ListenerAudio_MasterVolume::get().setValue(param);
         } else {
             SetWindowText(hLabel, L"Captured another");
         }
+
         break;
     }
 

@@ -88,9 +88,15 @@ void ListenerAudio_MasterVolume::uninit()
 float ListenerAudio_MasterVolume::getValue()
 {
     float currentVol = 0;
-    g_pVolumeControl->GetMasterVolumeLevelScalar(&currentVol);
-    // outString = L"Volume: " + std::to_wstring((int)(currentVol * 100)) + L"%";
+    if (g_pVolumeControl)
+        g_pVolumeControl->GetMasterVolumeLevelScalar(&currentVol);
     return currentVol;
+}
+
+void ListenerAudio_MasterVolume::setValue(float val)
+{
+    if (g_pVolumeControl)
+        g_pVolumeControl->SetMasterVolumeLevelScalar(val, NULL);
 }
 
 //
@@ -362,12 +368,15 @@ IconInfo IconManager::getIconMasterVol() { return iiMasterSpeaker; }
 // #include <shellapi.h>
 //  #pragma comment(lib, "Shell32.lib")
 
-RECT CustomSlider::getRect(LONG windowHeight, int leftOffset)
+bool CustomSlider::intersects(LONG windowHeight, int leftOffset, POINT mousePos, float& outY)
 {
-    return RECT {
-        leftOffset + margin, 0,
-        leftOffset + sliderWidth, windowHeight
-    };
+    // rect extends left, right without margin
+    RECT rect { leftOffset, margin, leftOffset + sliderWidth, windowHeight - margin };
+    if (rect.bottom > rect.top && PtInRect(&rect, mousePos)) {
+        outY = float(mousePos.y - rect.bottom) / float(rect.top - rect.bottom);
+        return true;
+    }
+    return false;
 }
 
 void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset, bool isSystem)

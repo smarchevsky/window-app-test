@@ -30,6 +30,7 @@ public:
     void init(HWND callbackWnd);
     void uninit();
     float getValue();
+    void setValue(float val);
 
     static ListenerAudio_MasterVolume& get()
     {
@@ -112,6 +113,6 @@ struct CustomSlider {
     static constexpr int margin = 10;
     float value;
     DWORD pid;
-    RECT getRect(LONG windowHeight, int leftOffset); // without margin
+    bool intersects(LONG windowHeight, int leftOffset, POINT mousePos, float& outY);
     void Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset, bool isSystem = false);
 };
