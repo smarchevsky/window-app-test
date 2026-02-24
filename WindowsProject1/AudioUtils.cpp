@@ -288,14 +288,63 @@ void IconManager::uninit()
     DestroyIcon(iiSystemSounds.hLarge);
 }
 
-static int getIconWidth(HICON icon)
+COLORREF getIconColor(BITMAP bmp, ICONINFO iconInfo)
+{
+    // 1. Setup the bitmap info header
+    BITMAPINFOHEADER bi = { 0 };
+    bi.biSize = sizeof(BITMAPINFOHEADER);
+    bi.biWidth = bmp.bmWidth;
+    bi.biHeight = -bmp.bmHeight; // Negative for top-down
+    bi.biPlanes = 1;
+    bi.biBitCount = 32;
+    bi.biCompression = BI_RGB;
+
+    // 2. Allocate memory for pixels
+    int pixelCount = bmp.bmWidth * bmp.bmHeight;
+    std::vector<DWORD> pixels(pixelCount);
+
+    // 3. Get the raw bits
+    HDC hdc = GetDC(NULL);
+    GetDIBits(hdc, iconInfo.hbmColor, 0, bmp.bmHeight, &pixels[0], (BITMAPINFO*)&bi, DIB_RGB_COLORS);
+    ReleaseDC(NULL, hdc);
+
+    // 4. Calculate Average
+    long long totalR = 0, totalG = 0, totalB = 0;
+    int opaquePixels = 0;
+
+    for (int i = 0; i < pixelCount; i++) {
+        BYTE a = (pixels[i] >> 24) & 0xFF;
+        BYTE r = (pixels[i] >> 16) & 0xFF;
+        BYTE g = (pixels[i] >> 8) & 0xFF;
+        BYTE b = pixels[i] & 0xFF;
+
+        if (a > 127) {
+            totalR += r, totalG += g, totalB += b, opaquePixels++;
+        }
+    }
+
+    if (opaquePixels > 0) {
+        BYTE avgR = totalR / opaquePixels;
+        BYTE avgG = totalG / opaquePixels;
+        BYTE avgB = totalB / opaquePixels;
+        return RGB(avgR, avgG, avgB);
+    }
+    return RGB(160, 160, 160);
+}
+
+static IconInfo createIconInfo(HICON icon)
 {
     ICONINFO iconInfo;
     GetIconInfo(icon, &iconInfo);
 
     BITMAP bmp;
     GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmp);
-    return bmp.bmWidth;
+
+    IconInfo info {};
+    info.hBrush = CreateSolidBrush(getIconColor(bmp, iconInfo));
+    info.hLarge = icon;
+    info.width = bmp.bmWidth;
+    return info;
 }
 
 IconManager::IconManager()
@@ -309,10 +358,7 @@ IconManager::IconManager()
         wcscpy_s(dllPath, MAX_PATH, dllPathSource);
         wcscat_s(dllPath, path);
         ExtractIconExW(dllPath, index, &hIcon, nullptr, 1);
-        IconInfo iconInfo {};
-        iconInfo.hLarge = hIcon;
-        iconInfo.width = getIconWidth(hIcon);
-        return iconInfo;
+        return createIconInfo(hIcon);
     };
 
     iiMasterSpeaker = loadIcon(L"\\mmres.dll", 0);
@@ -342,11 +388,12 @@ IconInfo IconManager::getIconFromProcess(DWORD pid)
 
         CloseHandle(hProcess);
 
-        UINT icons = ExtractIconExW(exePath, 0, &result.hLarge, nullptr, 1);
+        HICON icon;
+        UINT icons = ExtractIconExW(exePath, 0, &icon, nullptr, 1);
         if (icons == 0)
             return result;
 
-        result.width = getIconWidth(result.hLarge);
+        result = createIconInfo(icon);
 
         cachedProcessIcons[pid] = result;
 
@@ -391,9 +438,6 @@ void CustomSlider::Draw(HDC hdc, HBRUSH brush, bool isSystem) const
         m_rect.right - margin, m_rect.bottom - margin
     };
 
-    if (drawRect.right > drawRect.left && drawRect.bottom > drawRect.top)
-        FillRect(hdc, &drawRect, brush);
-
     auto& im = IconManager::get();
     IconInfo iconInfo {};
     if (isSystem) {
@@ -401,6 +445,10 @@ void CustomSlider::Draw(HDC hdc, HBRUSH brush, bool isSystem) const
     } else {
         iconInfo = im.getIconFromProcess(m_pid);
     }
+
+    if (drawRect.right > drawRect.left && drawRect.bottom > drawRect.top)
+        FillRect(hdc, &drawRect, iconInfo.hBrush);
+
     if (iconInfo.hLarge)
         DrawIconEx(hdc,
             m_rect.left + sliderWidth / 2 - iconInfo.width / 2,

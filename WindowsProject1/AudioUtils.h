@@ -81,6 +81,7 @@ private:
 //
 
 struct IconInfo {
+    HBRUSH hBrush;
     HICON hLarge;
     int width;
 };
