@@ -109,10 +109,20 @@ public:
 //
 
 static constexpr int sliderWidth = 80;
-struct CustomSlider {
+class CustomSlider {
     static constexpr int margin = 10;
-    float value;
-    DWORD pid;
-    bool intersects(LONG windowHeight, int leftOffset, POINT mousePos, float& outY);
-    void Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset, bool isSystem = false);
+
+    RECT m_rect;
+    float m_value;
+    DWORD m_pid;
+
+public:
+    CustomSlider(float value, DWORD pid) { m_pid = pid, m_value = value; }
+    CustomSlider() = default;
+
+    void setRect(RECT rect) { m_rect = rect; }
+
+    void setValue(float value) { m_value = value; }
+    bool intersects(POINT mousePos, float& outY) const;
+    void Draw(HDC hdc, HBRUSH brush, bool isSystem = false) const;
 };

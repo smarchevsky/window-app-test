@@ -368,40 +368,42 @@ IconInfo IconManager::getIconMasterVol() { return iiMasterSpeaker; }
 // #include <shellapi.h>
 //  #pragma comment(lib, "Shell32.lib")
 
-bool CustomSlider::intersects(LONG windowHeight, int leftOffset, POINT mousePos, float& outY)
+bool CustomSlider::intersects(POINT mousePos, float& outY) const
 {
-    // rect extends left, right without margin
-    RECT rect { leftOffset, margin, leftOffset + sliderWidth, windowHeight - margin };
-    if (rect.bottom > rect.top && PtInRect(&rect, mousePos)) {
-        outY = float(mousePos.y - rect.bottom) / float(rect.top - rect.bottom);
+    RECT touchRect {
+        m_rect.left, m_rect.top + margin,
+        m_rect.right, m_rect.bottom - margin
+    };
+
+    if (touchRect.bottom > touchRect.top && PtInRect(&touchRect, mousePos)) {
+        outY = float(mousePos.y - touchRect.bottom) / float(touchRect.top - touchRect.bottom);
         return true;
     }
     return false;
 }
 
-void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset, bool isSystem)
+void CustomSlider::Draw(HDC hdc, HBRUSH brush, bool isSystem) const
 {
-    const int bottom = windowHeight - margin;
-    const float height = (bottom - margin) * (1.f - value);
+    float drawHeight = (m_rect.bottom - m_rect.top - 2 * margin) * (1.f - m_value);
 
-    RECT rect {
-        leftOffset + margin, LONG(margin + height),
-        leftOffset + sliderWidth - margin, bottom
+    RECT drawRect {
+        m_rect.left + margin, m_rect.top + margin + LONG(drawHeight),
+        m_rect.right - margin, m_rect.bottom - margin
     };
 
-    if (rect.right > rect.left && rect.bottom > rect.top)
-        FillRect(hdc, &rect, brush);
+    if (drawRect.right > drawRect.left && drawRect.bottom > drawRect.top)
+        FillRect(hdc, &drawRect, brush);
 
     auto& im = IconManager::get();
     IconInfo iconInfo {};
     if (isSystem) {
         iconInfo = im.getIconMasterVol();
     } else {
-        iconInfo = im.getIconFromProcess(pid);
+        iconInfo = im.getIconFromProcess(m_pid);
     }
     if (iconInfo.hLarge)
         DrawIconEx(hdc,
-            leftOffset + (sliderWidth - iconInfo.width) / 2,
-            bottom - sliderWidth / 2 - iconInfo.width / 4,
+            m_rect.left + sliderWidth / 2 - iconInfo.width / 2,
+            drawRect.bottom - sliderWidth / 2 - iconInfo.width / 4,
             iconInfo.hLarge, 0, 0, 0, NULL, DI_NORMAL);
 }

@@ -105,6 +105,20 @@ HWND hLabel;
 bool isDragging = false;
 POINT capturedCursorScreenPos;
 
+void recalculateSliderRects(HWND hWnd)
+{
+    RECT windowRect;
+    GetClientRect(hWnd, &windowRect);
+    LONG windowHeight = windowRect.bottom;
+
+    sliderMasterVol.setRect({ 0, 0, sliderWidth, windowHeight });
+    int offset = sliderWidth + 30;
+    for (auto& slider : slidersAppVol) {
+        slider.setRect({ offset, 0, offset + sliderWidth, windowHeight });
+        offset += sliderWidth;
+    }
+}
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
@@ -134,7 +148,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         ScreenToClient(hWnd, &cursorClientPos);
 
         float param;
-        if (sliderMasterVol.intersects(rect.bottom, 0, cursorClientPos, param)) {
+        if (sliderMasterVol.intersects(cursorClientPos, param)) {
             SetWindowText(hLabel, (L"Master captured: " + std::to_wstring(param)).c_str());
             ListenerAudio_MasterVolume::get().setValue(param);
         } else {
@@ -175,7 +189,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
 
     case WM_REFRESH_MASTER_VOL: {
-        sliderMasterVol.value = ListenerAudio_MasterVolume::get().getValue();
+        sliderMasterVol.setValue(ListenerAudio_MasterVolume::get().getValue());
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }
@@ -188,6 +202,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             CustomSlider slider { appInfo.currentVol, appInfo.pid };
             slidersAppVol.emplace_back(slider);
         }
+
+        recalculateSliderRects(hWnd);
 
         InvalidateRect(hWnd, NULL, TRUE);
     } break;
@@ -210,6 +226,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HDC hdc = GetDC(hWnd);
         memBitmap = CreateCompatibleBitmap(hdc, LOWORD(lParam), HIWORD(lParam));
         ReleaseDC(hWnd, hdc);
+
+        recalculateSliderRects(hWnd);
     } break;
 
     case WM_PAINT: {
@@ -222,12 +240,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
 
         FillRect(memDC, &rect, (HBRUSH)(COLOR_WINDOW + 1));
-        sliderMasterVol.Draw(memDC, hBrushSlider, rect.bottom, 0, true);
-        int offset = sliderWidth + 30;
-        for (auto& slider : slidersAppVol) {
-            slider.Draw(memDC, hBrushSlider, rect.bottom, offset);
-            offset += sliderWidth;
-        }
+
+        sliderMasterVol.Draw(memDC, hBrushSlider, true);
+        for (auto& slider : slidersAppVol)
+            slider.Draw(memDC, hBrushSlider);
 
         BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
         SelectObject(memDC, oldBitmap);
