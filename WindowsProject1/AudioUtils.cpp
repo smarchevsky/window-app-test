@@ -274,8 +274,6 @@ void IconManager::uninit()
 {
     for (auto& pair : cachedProcessIcons) {
         auto& iconInfo = pair.second;
-        if (iconInfo.hSmall)
-            DestroyIcon(iconInfo.hSmall);
         if (iconInfo.hLarge)
             DestroyIcon(iconInfo.hLarge);
     }
@@ -300,11 +298,20 @@ IconInfo IconManager::getIconFromProcess(DWORD pid)
         }
         CloseHandle(hProcess);
 
-        UINT icons = ExtractIconExW(exePath, 0, &result.hLarge, &result.hSmall, 1);
+        UINT icons = ExtractIconExW(exePath, 0, &result.hLarge, nullptr, 1);
         if (icons == 0)
             return result;
 
+        ICONINFO iconInfo;
+        GetIconInfo(result.hLarge, &iconInfo);
+
+        BITMAP bmp;
+        GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmp);
+        result.width = bmp.bmWidth;
+
         cachedProcessIcons[pid] = result;
+
+        printf("Icon width %d\n", result.width);
         wprintf(L"Stored new icon for: %s\n", exePath);
     } else {
         result = foundIconIt->second;
@@ -333,10 +340,8 @@ void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset
     if (rect.right > rect.left && rect.bottom > rect.top)
         FillRect(hdc, &rect, brush);
 
-    constexpr int iconSize = 32;
-
     IconInfo ii = IconManager::get().getIconFromProcess(pid);
     if (ii.hLarge)
-        DrawIconEx(hdc, leftOffset + (sliderWidth - iconSize) / 2, bottom - sliderWidth / 2,
-            ii.hLarge, iconSize, iconSize, 0, NULL, DI_NORMAL);
+        DrawIconEx(hdc, leftOffset + (sliderWidth - ii.width) / 2, bottom - sliderWidth / 2,
+            ii.hLarge, 0, 0, 0, NULL, DI_NORMAL);
 }

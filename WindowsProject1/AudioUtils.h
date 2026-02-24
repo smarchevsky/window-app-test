@@ -80,7 +80,8 @@ private:
 //
 
 struct IconInfo {
-    HICON hSmall, hLarge;
+    HICON hLarge;
+    int width;
 };
 
 class IconManager {
