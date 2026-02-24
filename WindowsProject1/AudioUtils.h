@@ -112,5 +112,6 @@ struct CustomSlider {
     static constexpr int margin = 10;
     float value;
     DWORD pid;
+    RECT getRect(LONG windowHeight, int leftOffset); // without margin
     void Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset, bool isSystem = false);
 };

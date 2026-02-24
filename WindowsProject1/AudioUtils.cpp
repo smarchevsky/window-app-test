@@ -362,6 +362,14 @@ IconInfo IconManager::getIconMasterVol() { return iiMasterSpeaker; }
 // #include <shellapi.h>
 //  #pragma comment(lib, "Shell32.lib")
 
+RECT CustomSlider::getRect(LONG windowHeight, int leftOffset)
+{
+    return RECT {
+        leftOffset + margin, 0,
+        leftOffset + sliderWidth, windowHeight
+    };
+}
+
 void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset, bool isSystem)
 {
     const float bottom = windowHeight - margin;
@@ -383,8 +391,8 @@ void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset
         iconInfo = im.getIconFromProcess(pid);
     }
     if (iconInfo.hLarge)
-        DrawIconEx(hdc, 
-            leftOffset + (sliderWidth - iconInfo.width) / 2, 
-            bottom - sliderWidth / 2  - iconInfo.width / 4,
+        DrawIconEx(hdc,
+            leftOffset + (sliderWidth - iconInfo.width) / 2,
+            bottom - sliderWidth / 2 - iconInfo.width / 4,
             iconInfo.hLarge, 0, 0, 0, NULL, DI_NORMAL);
 }

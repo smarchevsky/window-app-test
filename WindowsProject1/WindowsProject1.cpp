@@ -36,7 +36,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR lpCmdLine,
     _In_ int nCmdShow)
 {
-   // CreateConsole();
+    CreateConsole();
 
     CoinitializeWrapper coinitializeRAII;
 
@@ -102,9 +102,78 @@ std::vector<CustomSlider> slidersAppVol;
 HDC memDC;
 HBITMAP memBitmap;
 
+int totalX = 0, totalY = 0;
+HWND hLabel;
+
+bool isDragging = false;
+POINT capturedCursorScreenPos;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
+    case WM_CREATE: {
+        memDC = CreateCompatibleDC(nullptr);
+        hLabel = CreateWindow(L"STATIC", L"Drag to move: X: 0, Y: 0",
+            WS_VISIBLE | WS_CHILD, 20, 20, 300, 20, hWnd, NULL, NULL, NULL);
+        break;
+    }
+
+    case WM_LBUTTONDOWN: {
+        SetCapture(hWnd);
+        ShowCursor(FALSE);
+
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+
+        POINT cursorScreenPos, cursorClientPos;
+        GetCursorPos(&cursorScreenPos);
+
+        isDragging = true;
+        capturedCursorScreenPos = cursorScreenPos;
+
+        cursorClientPos = cursorScreenPos;
+        ScreenToClient(hWnd, &cursorClientPos);
+
+        auto sliderRectMaster = sliderMasterVol.getRect(rect.bottom, 0);
+
+        if (PtInRect(&sliderRectMaster, cursorClientPos)) {
+            SetWindowText(hLabel, L"Master captured");
+        } else {
+            SetWindowText(hLabel, L"Captured another");
+        }
+        break;
+    }
+
+    case WM_LBUTTONUP: {
+        if (isDragging) {
+            isDragging = false;
+            ReleaseCapture();
+            ShowCursor(TRUE);
+        }
+        break;
+    }
+
+    case WM_MOUSEMOVE: {
+        if (isDragging) {
+            POINT currentPos;
+            GetCursorPos(&currentPos);
+
+            int dx = currentPos.x - capturedCursorScreenPos.x;
+            int dy = currentPos.y - capturedCursorScreenPos.y;
+
+            if (dx != 0 || dy != 0) {
+                totalX += dx;
+                totalY += dy;
+
+                std::wstring text = L"X: " + std::to_wstring(totalX) + L", Y: " + std::to_wstring(totalY);
+                SetWindowText(hLabel, text.c_str());
+
+                SetCursorPos(capturedCursorScreenPos.x, capturedCursorScreenPos.y);
+            }
+        }
+        break;
+    }
+
     case WM_REFRESH_MASTER_VOL: {
         sliderMasterVol.value = ListenerAudio_MasterVolume::get().getValue();
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
@@ -121,10 +190,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         InvalidateRect(hWnd, NULL, TRUE);
-    } break;
-
-    case WM_CREATE: {
-        memDC = CreateCompatibleDC(nullptr);
     } break;
 
     case WM_DESTROY: {
