@@ -18,6 +18,8 @@ HINSTANCE hInst; // current instance
 WCHAR szTitle[MAX_LOADSTRING]; // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING]; // the main window class name
 
+HBRUSH hBrushSlider = CreateSolidBrush(RGB(100, 100, 250));
+
 void CreateConsole()
 {
     AllocConsole();
@@ -29,16 +31,12 @@ void CreateConsole()
     std::ios::sync_with_stdio();
 }
 
-HWND g_labelVolMaster;
-HWND g_labelVolApps;
-HBRUSH hBrush = CreateSolidBrush(RGB(100, 100, 250));
-
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR lpCmdLine,
     _In_ int nCmdShow)
 {
-    CreateConsole();
+   // CreateConsole();
 
     CoinitializeWrapper coinitializeRAII;
 
@@ -78,13 +76,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         UpdateWindow(hWnd);
     }
 
-    PostMessage(hWnd, WM_PAINT, 0, 0); // to draw square initially!
-
-    // g_labelVolMaster = CreateWindowW(L"STATIC", L"Volume: 0%", WS_VISIBLE | WS_CHILD,
-    //     10, 10, 600, 100, hWnd, nullptr, hInstance, nullptr);
-    //
-    // g_labelVolApps = CreateWindowW(L"STATIC", L"", WS_VISIBLE | WS_CHILD,
-    //     10, 140, 600, 600, hWnd, nullptr, hInstance, nullptr);
+    // PostMessage(hWnd, WM_PAINT, 0, 0); // to draw square initially!
 
     ListenerAudio_MasterVolume::get().init(hWnd);
     ListenerAudio_AllApplications::get().init(hWnd);
@@ -101,21 +93,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     return (int)msg.wParam;
 }
-std::wstring textInfoVolMaster, textInfoVolApps;
-
-void drawSquareCodeExample(HDC hdc)
-{
-    RECT rect { 000, 000, 600, 600 };
-    FillRect(hdc, &rect, hBrush);
-
-    SetBkMode(hdc, TRANSPARENT);
-    DrawText(hdc, L"Button", -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-}
 
 std::vector<AppAudioInfo> appInfos;
 
-CustomSlider masterSlider;
-std::vector<CustomSlider> sliders;
+CustomSlider sliderMasterVol;
+std::vector<CustomSlider> slidersAppVol;
 
 HDC memDC;
 HBITMAP memBitmap;
@@ -124,7 +106,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
     case WM_REFRESH_MASTER_VOL: {
-        masterSlider.value = ListenerAudio_MasterVolume::get().getValue();
+        sliderMasterVol.value = ListenerAudio_MasterVolume::get().getValue();
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }
@@ -132,10 +114,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_REFRESH_APP_VOLUMES: {
         ListenerAudio_AllApplications::get().getInfo(appInfos);
 
-        sliders.resize(0);
+        slidersAppVol.resize(0);
         for (auto& appInfo : appInfos) {
             CustomSlider slider { appInfo.currentVol, appInfo.pid };
-            sliders.emplace_back(slider);
+            slidersAppVol.emplace_back(slider);
         }
 
         InvalidateRect(hWnd, NULL, TRUE);
@@ -175,10 +157,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
 
         FillRect(memDC, &rect, (HBRUSH)(COLOR_WINDOW + 1));
-        masterSlider.Draw(memDC, hBrush, rect.bottom, 0, true);
+        sliderMasterVol.Draw(memDC, hBrushSlider, rect.bottom, 0, true);
         int offset = sliderWidth + 30;
-        for (auto& slider : sliders) {
-            slider.Draw(memDC, hBrush, rect.bottom, offset);
+        for (auto& slider : slidersAppVol) {
+            slider.Draw(memDC, hBrushSlider, rect.bottom, offset);
             offset += sliderWidth;
         }
 
