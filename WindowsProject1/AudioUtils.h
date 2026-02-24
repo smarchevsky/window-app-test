@@ -22,7 +22,7 @@ public:
 // MASTER
 //
 
-class IAudioEndpointVolume;
+struct IAudioEndpointVolume;
 class ListenerAudio_MasterVolume {
     IAudioEndpointVolume* g_pVolumeControl;
 
@@ -51,7 +51,7 @@ struct AppAudioInfo {
     std::wstring appName;
 };
 
-class IAudioSessionManager2;
+struct IAudioSessionManager2;
 class ListenerAudio_AllApplications {
     IAudioSessionManager2* g_pSessionManager;
     HWINEVENTHOOK g_hook; // to detect app close

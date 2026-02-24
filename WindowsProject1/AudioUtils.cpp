@@ -372,11 +372,11 @@ RECT CustomSlider::getRect(LONG windowHeight, int leftOffset)
 
 void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset, bool isSystem)
 {
-    const float bottom = windowHeight - margin;
+    const int bottom = windowHeight - margin;
     const float height = (bottom - margin) * (1.f - value);
 
     RECT rect {
-        leftOffset + margin, margin + height,
+        leftOffset + margin, LONG(margin + height),
         leftOffset + sliderWidth - margin, bottom
     };
 
