@@ -163,7 +163,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         RECT windowRect;
         GetClientRect(hWnd, &windowRect);
 
-        masterSlider.Draw(hdc, hBrush, windowRect.bottom, 0);
+        masterSlider.Draw(hdc, hBrush, windowRect.bottom, 0, true);
         int offset = sliderWidth + 30;
         for (auto& slider : sliders) {
             slider.Draw(hdc, hBrush, windowRect.bottom, offset);

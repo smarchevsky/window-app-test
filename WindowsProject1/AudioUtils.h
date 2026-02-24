@@ -85,9 +85,11 @@ struct IconInfo {
 };
 
 class IconManager {
-    IconManager() = default;
+    IconManager();
+    IconManager(const IconManager&) = delete;
 
     std::unordered_map<DWORD, IconInfo> cachedProcessIcons;
+    IconInfo iiMasterSpeaker, iiMasterHeadphones, iiSystemSounds;
 
 public:
     void uninit();
@@ -98,6 +100,7 @@ public:
     }
 
     IconInfo getIconFromProcess(DWORD pid);
+    IconInfo getIconMasterVol();
 };
 
 //
@@ -109,5 +112,5 @@ struct CustomSlider {
     static constexpr int margin = 10;
     float value;
     DWORD pid;
-    void Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset);
+    void Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset, bool isSystem = false);
 };

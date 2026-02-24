@@ -277,6 +277,41 @@ void IconManager::uninit()
         if (iconInfo.hLarge)
             DestroyIcon(iconInfo.hLarge);
     }
+    DestroyIcon(iiMasterSpeaker.hLarge);
+    DestroyIcon(iiMasterHeadphones.hLarge);
+    DestroyIcon(iiSystemSounds.hLarge);
+}
+
+static int getIconWidth(HICON icon)
+{
+    ICONINFO iconInfo;
+    GetIconInfo(icon, &iconInfo);
+
+    BITMAP bmp;
+    GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmp);
+    return bmp.bmWidth;
+}
+
+IconManager::IconManager()
+{
+    HICON hIcon = nullptr;
+    wchar_t dllPathSource[MAX_PATH];
+    GetSystemDirectoryW(dllPathSource, MAX_PATH);
+
+    auto loadIcon = [&](const wchar_t* path, int index) -> IconInfo {
+        wchar_t dllPath[MAX_PATH];
+        wcscpy_s(dllPath, MAX_PATH, dllPathSource);
+        wcscat_s(dllPath, path);
+        ExtractIconExW(dllPath, index, &hIcon, nullptr, 1);
+        IconInfo iconInfo {};
+        iconInfo.hLarge = hIcon;
+        iconInfo.width = getIconWidth(hIcon);
+        return iconInfo;
+    };
+
+    iiMasterSpeaker = loadIcon(L"\\mmres.dll", 0);
+    iiMasterHeadphones = loadIcon(L"\\mmres.dll", 2);
+    iiSystemSounds = loadIcon(L"\\imageres.dll", 104);
 }
 
 IconInfo IconManager::getIconFromProcess(DWORD pid)
@@ -286,8 +321,10 @@ IconInfo IconManager::getIconFromProcess(DWORD pid)
     auto foundIconIt = cachedProcessIcons.find(pid);
     if (foundIconIt == cachedProcessIcons.end()) {
         HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-        if (!hProcess)
+        if (!hProcess) {
+            result = iiSystemSounds;
             return result;
+        }
 
         wchar_t exePath[MAX_PATH];
         DWORD size = MAX_PATH;
@@ -296,18 +333,14 @@ IconInfo IconManager::getIconFromProcess(DWORD pid)
             CloseHandle(hProcess);
             return result;
         }
+
         CloseHandle(hProcess);
 
         UINT icons = ExtractIconExW(exePath, 0, &result.hLarge, nullptr, 1);
         if (icons == 0)
             return result;
 
-        ICONINFO iconInfo;
-        GetIconInfo(result.hLarge, &iconInfo);
-
-        BITMAP bmp;
-        GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmp);
-        result.width = bmp.bmWidth;
+        result.width = getIconWidth(result.hLarge);
 
         cachedProcessIcons[pid] = result;
 
@@ -320,6 +353,8 @@ IconInfo IconManager::getIconFromProcess(DWORD pid)
     return result;
 }
 
+IconInfo IconManager::getIconMasterVol() { return iiMasterSpeaker; }
+
 //
 // SLIDER
 //
@@ -327,7 +362,7 @@ IconInfo IconManager::getIconFromProcess(DWORD pid)
 // #include <shellapi.h>
 //  #pragma comment(lib, "Shell32.lib")
 
-void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset)
+void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset, bool isSystem)
 {
     const float bottom = windowHeight - margin;
     const float height = (bottom - margin) * (1.f - value);
@@ -340,8 +375,14 @@ void CustomSlider::Draw(HDC hdc, HBRUSH brush, LONG windowHeight, int leftOffset
     if (rect.right > rect.left && rect.bottom > rect.top)
         FillRect(hdc, &rect, brush);
 
-    IconInfo ii = IconManager::get().getIconFromProcess(pid);
-    if (ii.hLarge)
-        DrawIconEx(hdc, leftOffset + (sliderWidth - ii.width) / 2, bottom - sliderWidth / 2,
-            ii.hLarge, 0, 0, 0, NULL, DI_NORMAL);
+    auto& im = IconManager::get();
+    IconInfo iconInfo {};
+    if (isSystem) {
+        iconInfo = im.getIconMasterVol();
+    } else {
+        iconInfo = im.getIconFromProcess(pid);
+    }
+    if (iconInfo.hLarge)
+        DrawIconEx(hdc, leftOffset + (sliderWidth - iconInfo.width) / 2, bottom - sliderWidth / 2,
+            iconInfo.hLarge, 0, 0, 0, NULL, DI_NORMAL);
 }
