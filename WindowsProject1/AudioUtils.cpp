@@ -415,32 +415,13 @@ IconInfo IconManager::getIconMasterVol() { return iiMasterSpeaker; }
 // #include <shellapi.h>
 //  #pragma comment(lib, "Shell32.lib")
 
-RECT CustomSlider::getTouchRect() const
-{
-    return {
-        m_rect.left, m_rect.top + margin,
-        m_rect.right, m_rect.bottom - margin
-    };
-}
-
-bool CustomSlider::intersects(POINT mousePos, float& outY) const
-{
-    RECT touchRect = getTouchRect();
-
-    if (touchRect.bottom > touchRect.top && PtInRect(&touchRect, mousePos)) {
-        outY = float(mousePos.y - touchRect.bottom) / float(touchRect.top - touchRect.bottom);
-        return true;
-    }
-    return false;
-}
-
 void CustomSlider::Draw(HDC hdc, HBRUSH brush, bool isSystem) const
 {
-    float drawHeight = (m_rect.bottom - m_rect.top - 2 * margin) * (1.f - m_value);
+    float drawHeight = (m_rect.bottom - m_rect.top) * (1.f - m_value);
 
     RECT drawRect {
-        m_rect.left + margin, m_rect.top + margin + LONG(drawHeight),
-        m_rect.right - margin, m_rect.bottom - margin
+        m_rect.left + margin, m_rect.top + LONG(drawHeight),
+        m_rect.right - margin, m_rect.bottom
     };
 
     auto& im = IconManager::get();

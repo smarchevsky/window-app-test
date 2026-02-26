@@ -110,9 +110,11 @@ public:
 // SLIDER
 //
 
+static bool isValidRect(const RECT& rect) { return rect.right > rect.left && rect.bottom > rect.top; }
+
 static constexpr int sliderWidth = 80;
+static constexpr int margin = 10;
 class CustomSlider {
-    static constexpr int margin = 10;
 
     RECT m_rect;
     float m_value;
@@ -123,15 +125,11 @@ public:
     CustomSlider() = default;
 
     void setRect(RECT rect) { m_rect = rect; }
-    RECT getTouchRect() const;
-    LONG getTouchHeight() const
-    {
-        auto rect = getTouchRect();
-        return rect.bottom - rect.top;
-    }
+
+    float getHeight() const { return float(m_rect.bottom - m_rect.top); }
 
     void setValue(float value) { m_value = value; }
     float getValue() const { return m_value; }
-    bool intersects(POINT mousePos, float& outY) const;
+    bool intersects(POINT pos) const { return isValidRect(m_rect) ? PtInRect(&m_rect, pos) : false; }
     void Draw(HDC hdc, HBRUSH brush, bool isSystem = false) const;
 };

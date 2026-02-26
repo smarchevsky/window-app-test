@@ -106,16 +106,26 @@ bool isDownLMB = false;
 POINT cursorScreenPosCaptured;
 LONG cursorOffsetAccumulatorY;
 
+CustomSlider* whichSliderTouched(POINT mousePos)
+{
+    if (sliderMasterVol.intersects(mousePos))
+        return &sliderMasterVol;
+    for (auto& slider : slidersAppVol)
+        if (slider.intersects(mousePos))
+            return &slider;
+    return nullptr;
+}
+
 void recalculateSliderRects(HWND hWnd)
 {
     RECT windowRect;
     GetClientRect(hWnd, &windowRect);
     LONG windowHeight = windowRect.bottom;
-
-    sliderMasterVol.setRect({ 0, 0, sliderWidth, windowHeight });
+    
+    sliderMasterVol.setRect({ 0, margin, sliderWidth, windowHeight - margin });
     int offset = sliderWidth + 30;
     for (auto& slider : slidersAppVol) {
-        slider.setRect({ offset, 0, offset + sliderWidth, windowHeight });
+        slider.setRect({ offset, margin, offset + sliderWidth, windowHeight - margin });
         offset += sliderWidth;
     }
 }
@@ -182,7 +192,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
         if (wParam == IDT_TIMER_1) {
             if (cursorOffsetAccumulatorY) {
-                float sliderHeight = (float)sliderMasterVol.getTouchHeight();
+                float sliderHeight = sliderMasterVol.getHeight();
                 float val = std::clamp(sliderMasterVol.getValue() + (float)cursorOffsetAccumulatorY / sliderHeight, 0.f, 1.f);
                 ListenerAudio_MasterVolume::get().setValue(val);
                 cursorOffsetAccumulatorY = 0;
