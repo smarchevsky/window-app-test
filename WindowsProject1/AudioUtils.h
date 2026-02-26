@@ -123,8 +123,10 @@ public:
     CustomSlider() = default;
 
     void setRect(RECT rect) { m_rect = rect; }
+    RECT getTouchRect() const;
 
     void setValue(float value) { m_value = value; }
+    float getValue() const { return m_value; }
     bool intersects(POINT mousePos, float& outY) const;
     void Draw(HDC hdc, HBRUSH brush, bool isSystem = false) const;
 };

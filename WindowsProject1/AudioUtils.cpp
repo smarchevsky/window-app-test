@@ -324,9 +324,9 @@ COLORREF getIconColor(BITMAP bmp, ICONINFO iconInfo)
     }
 
     if (opaquePixels > 0) {
-        BYTE avgR = totalR / opaquePixels;
-        BYTE avgG = totalG / opaquePixels;
-        BYTE avgB = totalB / opaquePixels;
+        BYTE avgR = BYTE(totalR / opaquePixels);
+        BYTE avgG = BYTE(totalG / opaquePixels);
+        BYTE avgB = BYTE(totalB / opaquePixels);
         return RGB(avgR, avgG, avgB);
     }
     return RGB(160, 160, 160);
@@ -415,12 +415,17 @@ IconInfo IconManager::getIconMasterVol() { return iiMasterSpeaker; }
 // #include <shellapi.h>
 //  #pragma comment(lib, "Shell32.lib")
 
-bool CustomSlider::intersects(POINT mousePos, float& outY) const
+RECT CustomSlider::getTouchRect() const
 {
-    RECT touchRect {
+    return {
         m_rect.left, m_rect.top + margin,
         m_rect.right, m_rect.bottom - margin
     };
+}
+
+bool CustomSlider::intersects(POINT mousePos, float& outY) const
+{
+    RECT touchRect = getTouchRect();
 
     if (touchRect.bottom > touchRect.top && PtInRect(&touchRect, mousePos)) {
         outY = float(mousePos.y - touchRect.bottom) / float(touchRect.top - touchRect.bottom);
