@@ -6,6 +6,7 @@
 
 #include "AudioUtils.h"
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 
@@ -99,11 +100,11 @@ std::vector<CustomSlider> slidersAppVol;
 HDC memDC;
 HBITMAP memBitmap;
 
-int totalX = 0, totalY = 0;
 HWND hLabel;
 
 bool isDownLMB = false;
 POINT cursorScreenPosCaptured;
+LONG cursorOffsetAccumulatorY;
 
 void recalculateSliderRects(HWND hWnd)
 {
@@ -124,8 +125,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message) {
     case WM_CREATE: {
         memDC = CreateCompatibleDC(nullptr);
-        hLabel = CreateWindow(L"STATIC", L"Drag to move: X: 0, Y: 0",
-            WS_VISIBLE | WS_CHILD, 20, 20, 300, 20, hWnd, NULL, NULL, NULL);
+        // hLabel = CreateWindow(L"STATIC", L"Drag to move: X: 0, Y: 0",
+        //     WS_VISIBLE | WS_CHILD, 20, 20, 300, 20, hWnd, NULL, NULL, NULL);
         ListenerAudio_MasterVolume::get().init(hWnd);
         ListenerAudio_AllApplications::get().init(hWnd);
         break;
@@ -147,15 +148,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         cursorClientPos = cursorScreenPos;
         ScreenToClient(hWnd, &cursorClientPos);
 
-        float param;
-        if (sliderMasterVol.intersects(cursorClientPos, param)) {
-            SetWindowText(hLabel, (L"Master captured: " + std::to_wstring(param)).c_str());
-            ListenerAudio_MasterVolume::get().setValue(param);
-        } else {
-            SetWindowText(hLabel, L"Captured another");
-        }
-
-        SetTimer(hWnd, IDT_TIMER_1, 50, (TIMERPROC)NULL);
+        SetTimer(hWnd, IDT_TIMER_1, 25, (TIMERPROC)NULL);
         break;
     }
 
@@ -166,6 +159,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             ShowCursor(TRUE);
             KillTimer(hWnd, IDT_TIMER_1);
         }
+        cursorOffsetAccumulatorY = 0;
         break;
     }
 
@@ -177,13 +171,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             int dx = currentPos.x - cursorScreenPosCaptured.x;
             int dy = currentPos.y - cursorScreenPosCaptured.y;
 
-            if (dx != 0 || dy != 0) {
-                totalX += dx;
-                totalY += dy;
-
-                std::wstring text = L"X: " + std::to_wstring(totalX) + L", Y: " + std::to_wstring(totalY);
-                SetWindowText(hLabel, text.c_str());
-
+            if (dx || dy) {
+                cursorOffsetAccumulatorY -= dy;
                 SetCursorPos(cursorScreenPosCaptured.x, cursorScreenPosCaptured.y);
             }
         }
@@ -192,7 +181,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_TIMER:
         if (wParam == IDT_TIMER_1) {
-            printf("timer!\n");
+            if (cursorOffsetAccumulatorY) {
+                float sliderHeight = (float)sliderMasterVol.getTouchHeight();
+                float val = std::clamp(sliderMasterVol.getValue() + (float)cursorOffsetAccumulatorY / sliderHeight, 0.f, 1.f);
+                ListenerAudio_MasterVolume::get().setValue(val);
+                cursorOffsetAccumulatorY = 0;
+            }
         }
         break;
 

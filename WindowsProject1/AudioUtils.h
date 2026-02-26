@@ -124,6 +124,11 @@ public:
 
     void setRect(RECT rect) { m_rect = rect; }
     RECT getTouchRect() const;
+    LONG getTouchHeight() const
+    {
+        auto rect = getTouchRect();
+        return rect.bottom - rect.top;
+    }
 
     void setValue(float value) { m_value = value; }
     float getValue() const { return m_value; }
