@@ -102,8 +102,8 @@ HBITMAP memBitmap;
 int totalX = 0, totalY = 0;
 HWND hLabel;
 
-bool isDragging = false;
-POINT capturedCursorScreenPos;
+bool isDownLMB = false;
+POINT cursorScreenPosCaptured;
 
 void recalculateSliderRects(HWND hWnd)
 {
@@ -141,8 +141,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         POINT cursorScreenPos, cursorClientPos;
         GetCursorPos(&cursorScreenPos);
 
-        isDragging = true;
-        capturedCursorScreenPos = cursorScreenPos;
+        isDownLMB = true;
+        cursorScreenPosCaptured = cursorScreenPos;
 
         cursorClientPos = cursorScreenPos;
         ScreenToClient(hWnd, &cursorClientPos);
@@ -155,25 +155,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SetWindowText(hLabel, L"Captured another");
         }
 
+        SetTimer(hWnd, IDT_TIMER_1, 50, (TIMERPROC)NULL);
         break;
     }
 
     case WM_LBUTTONUP: {
-        if (isDragging) {
-            isDragging = false;
+        if (isDownLMB) {
+            isDownLMB = false;
             ReleaseCapture();
             ShowCursor(TRUE);
+            KillTimer(hWnd, IDT_TIMER_1);
         }
         break;
     }
 
     case WM_MOUSEMOVE: {
-        if (isDragging) {
+        if (isDownLMB) {
             POINT currentPos;
             GetCursorPos(&currentPos);
 
-            int dx = currentPos.x - capturedCursorScreenPos.x;
-            int dy = currentPos.y - capturedCursorScreenPos.y;
+            int dx = currentPos.x - cursorScreenPosCaptured.x;
+            int dy = currentPos.y - cursorScreenPosCaptured.y;
 
             if (dx != 0 || dy != 0) {
                 totalX += dx;
@@ -182,11 +184,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 std::wstring text = L"X: " + std::to_wstring(totalX) + L", Y: " + std::to_wstring(totalY);
                 SetWindowText(hLabel, text.c_str());
 
-                SetCursorPos(capturedCursorScreenPos.x, capturedCursorScreenPos.y);
+                SetCursorPos(cursorScreenPosCaptured.x, cursorScreenPosCaptured.y);
             }
         }
         break;
     }
+
+    case WM_TIMER:
+        if (wParam == IDT_TIMER_1) {
+            printf("timer!\n");
+        }
+        break;
 
     case WM_REFRESH_MASTER_VOL: {
         sliderMasterVol.setValue(ListenerAudio_MasterVolume::get().getValue());

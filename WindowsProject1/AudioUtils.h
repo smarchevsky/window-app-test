@@ -10,6 +10,7 @@ enum {
     _____WM_USER = WM_USER,
     WM_REFRESH_MASTER_VOL,
     WM_REFRESH_APP_VOLUMES,
+    IDT_TIMER_1,
 };
 
 class CoinitializeWrapper {
@@ -118,7 +119,7 @@ class CustomSlider {
     DWORD m_pid;
 
 public:
-    CustomSlider(float value, DWORD pid) { m_pid = pid, m_value = value; }
+    CustomSlider(float value, DWORD pid) { m_rect = { 0 }, m_pid = pid, m_value = value; }
     CustomSlider() = default;
 
     void setRect(RECT rect) { m_rect = rect; }
