@@ -63,13 +63,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
         wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_WINDOWSPROJECT1);
+        wcex.lpszMenuName = NULL;
         wcex.lpszClassName = szWindowClass;
         wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
         RegisterClassExW(&wcex);
 
         hInst = hInstance;
-        hWnd = CreateWindowExW(WS_EX_TOPMOST, szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-            650, 200, 800, 600, nullptr, nullptr, hInstance, nullptr);
+        // WS_POPUP: Removes the title bar
+        // WS_THICKFRAME: Adds the invisible resizing borders
+        // WS_SYSMENU: Keeps it on the taskbar/system integration
+        // was WS_OVERLAPPEDWINDOW
+
+        DWORD dwStyle = WS_POPUP | WS_THICKFRAME | WS_SYSMENU;
+        hWnd = CreateWindowExW(WS_EX_TOPMOST, szWindowClass, szTitle, dwStyle,
+            650, 200, 800, 400, nullptr, nullptr, hInstance, nullptr);
         if (!hWnd)
             return FALSE;
 
@@ -121,7 +128,7 @@ void recalculateSliderRects(HWND hWnd)
     RECT windowRect;
     GetClientRect(hWnd, &windowRect);
     LONG windowHeight = windowRect.bottom;
-    
+
     sliderMasterVol.setRect({ 0, margin, sliderWidth, windowHeight - margin });
     int offset = sliderWidth + 30;
     for (auto& slider : slidersAppVol) {
@@ -141,8 +148,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         ListenerAudio_AllApplications::get().init(hWnd);
         break;
     }
+        // case WM_NCHITTEST: {
+        //     LRESULT hit = DefWindowProc(hWnd, message, wParam, lParam);
+        //     if (hit == HTCLIENT)
+        //         return HTCAPTION; // Pretend the body is the title bar
+        //     return hit;
+        // }
 
     case WM_LBUTTONDOWN: {
+
         SetCapture(hWnd);
         ShowCursor(FALSE);
 
