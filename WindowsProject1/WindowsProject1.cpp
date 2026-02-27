@@ -174,7 +174,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
         if (wParam == IDT_TIMER_1) {
             if (cursorOffsetAccumulatorY) {
-                auto& masterSlider = sliderManager.getSlider(SliderSelect::Master);
+                auto& masterSlider = sliderManager.getSlider(SliderId::Master);
                 float sliderHeight = masterSlider.getHeight();
                 float val = masterSlider.getValue() + (float)cursorOffsetAccumulatorY / sliderHeight;
                 ListenerAudio_MasterVolume::get().setValue(std::clamp(val, 0.f, 1.f));
@@ -184,7 +184,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_REFRESH_MASTER_VOL: {
-        sliderManager.getSlider(SliderSelect::Master).setValue(ListenerAudio_MasterVolume::get().getValue());
+        sliderManager.getSlider(SliderId::Master).setValue(ListenerAudio_MasterVolume::get().getValue());
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }

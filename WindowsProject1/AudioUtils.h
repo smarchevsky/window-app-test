@@ -138,7 +138,7 @@ public:
 // SLIDER MANAGER
 //
 
-enum class SliderSelect {
+enum class SliderId {
     None,
     Master,
     App_0
@@ -149,8 +149,8 @@ class SliderManager {
     std::vector<CustomSlider> slidersAppVol;
 
 public:
-    CustomSlider& getSlider(SliderSelect select);
-    SliderSelect getHoveredSlider(POINT mousePos);
+    CustomSlider& getSlider(SliderId select);
+    SliderId getHoveredSlider(POINT mousePos);
     void updateApplicationInfo(std::vector<AppAudioInfo>& appInfos);
 
     void recalculateSliderRects(HWND hWnd);

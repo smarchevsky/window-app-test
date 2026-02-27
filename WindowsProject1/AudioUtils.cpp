@@ -447,31 +447,31 @@ void CustomSlider::draw(HDC hdc, bool isSystem) const
 // USER INTERFACE MANAGER
 //
 
-inline SliderSelect IndexToSelect(int index) { return (SliderSelect)((int)SliderSelect::App_0 + index); }
-inline int SelectToIndex(SliderSelect select) { return (int)select - (int)SliderSelect::App_0; }
+inline SliderId IndexToSelect(int index) { return (SliderId)((int)SliderId::App_0 + index); }
+inline int SelectToIndex(SliderId select) { return (int)select - (int)SliderId::App_0; }
 
-CustomSlider& SliderManager::getSlider(SliderSelect select)
+CustomSlider& SliderManager::getSlider(SliderId select)
 {
-    if (select == SliderSelect::Master)
+    if (select == SliderId::Master)
         return sliderMasterVol;
 
-    else if ((int)select >= (int)SliderSelect::App_0)
+    else if ((int)select >= (int)SliderId::App_0)
         return slidersAppVol.at(SelectToIndex(select));
 
     static CustomSlider nullSlider;
     return nullSlider;
 }
 
-SliderSelect SliderManager::getHoveredSlider(POINT mousePos)
+SliderId SliderManager::getHoveredSlider(POINT mousePos)
 {
     if (sliderMasterVol.intersects(mousePos))
-        return SliderSelect::Master;
+        return SliderId::Master;
 
     for (int i = 0; i < slidersAppVol.size(); ++i)
         if (slidersAppVol.at(i).intersects(mousePos))
             return IndexToSelect(i);
 
-    return SliderSelect::None;
+    return SliderId::None;
 }
 
 void SliderManager::updateApplicationInfo(std::vector<AppAudioInfo>& appInfos)
