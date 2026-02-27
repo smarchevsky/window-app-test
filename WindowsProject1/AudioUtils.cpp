@@ -158,10 +158,11 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
     LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime)
 {
     if (idObject == OBJID_WINDOW && idChild == INDEXID_CONTAINER) {
-        PostMessage(AudioObserver::get().hNotify, WM_REFRESH_APP_VOLUMES, 0, 0);
+        DWORD processId = 0;
+        GetWindowThreadProcessId(hwnd, &processId);
+        PostMessage(AudioObserver::get().hNotify, WM_REFRESH_ANY_APP_CLOSED, 0, processId);
     }
 }
-
 }
 
 void ListenerAudio_AllApplications::init(HWND callbackWnd)

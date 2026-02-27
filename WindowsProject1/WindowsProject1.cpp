@@ -189,6 +189,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return 0;
     }
 
+    case WM_REFRESH_ANY_APP_CLOSED: {
+        if (std::ranges::find_if(appInfos, [&](const AppAudioInfo& info) { return info.pid == lParam; }) != appInfos.end()) {
+            SendMessage(hWnd, WM_REFRESH_APP_VOLUMES, 0, 0);
+        }
+    } break;
+
     case WM_REFRESH_APP_VOLUMES: {
         ListenerAudio_AllApplications::get().getInfo(appInfos);
 
