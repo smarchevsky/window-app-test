@@ -138,15 +138,21 @@ public:
 // SLIDER MANAGER
 //
 
+enum class SliderSelect {
+    None,
+    Master,
+    App_0
+};
+
 class SliderManager {
     CustomSlider sliderMasterVol {};
     std::vector<CustomSlider> slidersAppVol;
 
 public:
-    auto& master() { return sliderMasterVol; }
-    auto& apps() { return slidersAppVol; }
-    void drawSliders(HDC hdc);
+    CustomSlider& getSlider(SliderSelect select);
+    SliderSelect getHoveredSlider(POINT mousePos);
+    void updateApplicationInfo(std::vector<AppAudioInfo>& appInfos);
 
-    CustomSlider* getHoveredSlider(POINT mousePos);
     void recalculateSliderRects(HWND hWnd);
+    void drawSliders(HDC hdc);
 };

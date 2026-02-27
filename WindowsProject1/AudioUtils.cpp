@@ -7,6 +7,7 @@
 #include <psapi.h>
 
 // #include <stdio.h>
+#include <cassert>
 #include <string>
 
 // S_OK, S_FALSE
@@ -446,21 +447,40 @@ void CustomSlider::draw(HDC hdc, bool isSystem) const
 // USER INTERFACE MANAGER
 //
 
-void SliderManager::drawSliders(HDC hdc)
+inline SliderSelect IndexToSelect(int index) { return (SliderSelect)((int)SliderSelect::App_0 + index); }
+inline int SelectToIndex(SliderSelect select) { return (int)select - (int)SliderSelect::App_0; }
+
+CustomSlider& SliderManager::getSlider(SliderSelect select)
 {
-    master().draw(hdc, true);
-    for (auto& slider : apps())
-        slider.draw(hdc);
+    if (select == SliderSelect::Master)
+        return sliderMasterVol;
+
+    else if ((int)select >= (int)SliderSelect::App_0)
+        return slidersAppVol.at(SelectToIndex(select));
+
+    static CustomSlider nullSlider;
+    return nullSlider;
 }
 
-CustomSlider* SliderManager::getHoveredSlider(POINT mousePos)
+SliderSelect SliderManager::getHoveredSlider(POINT mousePos)
 {
     if (sliderMasterVol.intersects(mousePos))
-        return &sliderMasterVol;
-    for (auto& slider : slidersAppVol)
-        if (slider.intersects(mousePos))
-            return &slider;
-    return nullptr;
+        return SliderSelect::Master;
+
+    for (int i = 0; i < slidersAppVol.size(); ++i)
+        if (slidersAppVol.at(i).intersects(mousePos))
+            return IndexToSelect(i);
+
+    return SliderSelect::None;
+}
+
+void SliderManager::updateApplicationInfo(std::vector<AppAudioInfo>& appInfos)
+{
+    slidersAppVol.resize(0);
+    for (auto& appInfo : appInfos) {
+        CustomSlider slider { appInfo.currentVol, appInfo.pid };
+        slidersAppVol.emplace_back(slider);
+    }
 }
 
 void SliderManager::recalculateSliderRects(HWND hWnd)
@@ -475,4 +495,11 @@ void SliderManager::recalculateSliderRects(HWND hWnd)
         slider.setRect({ offset, margin, offset + sliderWidth, windowHeight - margin });
         offset += sliderWidth;
     }
+}
+
+void SliderManager::drawSliders(HDC hdc)
+{
+    sliderMasterVol.draw(hdc, true);
+    for (auto& slider : slidersAppVol)
+        slider.draw(hdc);
 }

@@ -123,15 +123,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         ListenerAudio_AllApplications::get().init(hWnd);
         break;
     }
-        // case WM_NCHITTEST: {
-        //     LRESULT hit = DefWindowProc(hWnd, message, wParam, lParam);
-        //     if (hit == HTCLIENT)
-        //         return HTCAPTION; // Pretend the body is the title bar
-        //     return hit;
-        // }
 
     case WM_LBUTTONDOWN: {
-
         SetCapture(hWnd);
         ShowCursor(FALSE);
 
@@ -181,8 +174,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
         if (wParam == IDT_TIMER_1) {
             if (cursorOffsetAccumulatorY) {
-                float sliderHeight = sliderManager.master().getHeight();
-                float val = sliderManager.master().getValue() + (float)cursorOffsetAccumulatorY / sliderHeight;
+                auto& masterSlider = sliderManager.getSlider(SliderSelect::Master);
+                float sliderHeight = masterSlider.getHeight();
+                float val = masterSlider.getValue() + (float)cursorOffsetAccumulatorY / sliderHeight;
                 ListenerAudio_MasterVolume::get().setValue(std::clamp(val, 0.f, 1.f));
                 cursorOffsetAccumulatorY = 0;
             }
@@ -190,7 +184,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_REFRESH_MASTER_VOL: {
-        sliderManager.master().setValue(ListenerAudio_MasterVolume::get().getValue());
+        sliderManager.getSlider(SliderSelect::Master).setValue(ListenerAudio_MasterVolume::get().getValue());
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }
@@ -198,12 +192,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_REFRESH_APP_VOLUMES: {
         ListenerAudio_AllApplications::get().getInfo(appInfos);
 
-        sliderManager.apps().resize(0);
-        for (auto& appInfo : appInfos) {
-            CustomSlider slider { appInfo.currentVol, appInfo.pid };
-            sliderManager.apps().emplace_back(slider);
-        }
-
+        sliderManager.updateApplicationInfo(appInfos);
+        
         sliderManager.recalculateSliderRects(hWnd);
 
         InvalidateRect(hWnd, NULL, TRUE);
