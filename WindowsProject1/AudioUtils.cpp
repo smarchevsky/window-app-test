@@ -415,7 +415,7 @@ IconInfo IconManager::getIconMasterVol() { return iiMasterSpeaker; }
 // #include <shellapi.h>
 //  #pragma comment(lib, "Shell32.lib")
 
-void CustomSlider::Draw(HDC hdc, HBRUSH brush, bool isSystem) const
+void CustomSlider::draw(HDC hdc, bool isSystem) const
 {
     float drawHeight = (m_rect.bottom - m_rect.top) * (1.f - m_value);
 
@@ -440,4 +440,39 @@ void CustomSlider::Draw(HDC hdc, HBRUSH brush, bool isSystem) const
             m_rect.left + sliderWidth / 2 - iconInfo.width / 2,
             drawRect.bottom - sliderWidth / 2 - iconInfo.width / 4,
             iconInfo.hLarge, 0, 0, 0, NULL, DI_NORMAL);
+}
+
+//
+// USER INTERFACE MANAGER
+//
+
+void SliderManager::drawSliders(HDC hdc)
+{
+    master().draw(hdc, true);
+    for (auto& slider : apps())
+        slider.draw(hdc);
+}
+
+CustomSlider* SliderManager::getHoveredSlider(POINT mousePos)
+{
+    if (sliderMasterVol.intersects(mousePos))
+        return &sliderMasterVol;
+    for (auto& slider : slidersAppVol)
+        if (slider.intersects(mousePos))
+            return &slider;
+    return nullptr;
+}
+
+void SliderManager::recalculateSliderRects(HWND hWnd)
+{
+    RECT windowRect;
+    GetClientRect(hWnd, &windowRect);
+    LONG windowHeight = windowRect.bottom;
+
+    sliderMasterVol.setRect({ 0, margin, sliderWidth, windowHeight - margin });
+    int offset = sliderWidth + 30;
+    for (auto& slider : slidersAppVol) {
+        slider.setRect({ offset, margin, offset + sliderWidth, windowHeight - margin });
+        offset += sliderWidth;
+    }
 }

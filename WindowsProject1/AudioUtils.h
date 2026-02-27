@@ -131,5 +131,22 @@ public:
     void setValue(float value) { m_value = value; }
     float getValue() const { return m_value; }
     bool intersects(POINT pos) const { return isValidRect(m_rect) ? PtInRect(&m_rect, pos) : false; }
-    void Draw(HDC hdc, HBRUSH brush, bool isSystem = false) const;
+    void draw(HDC hdc, bool isSystem = false) const;
+};
+
+//
+// SLIDER MANAGER
+//
+
+class SliderManager {
+    CustomSlider sliderMasterVol {};
+    std::vector<CustomSlider> slidersAppVol;
+
+public:
+    auto& master() { return sliderMasterVol; }
+    auto& apps() { return slidersAppVol; }
+    void drawSliders(HDC hdc);
+
+    CustomSlider* getHoveredSlider(POINT mousePos);
+    void recalculateSliderRects(HWND hWnd);
 };

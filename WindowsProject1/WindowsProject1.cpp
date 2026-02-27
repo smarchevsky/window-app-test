@@ -101,9 +101,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 std::vector<AppAudioInfo> appInfos;
 
-CustomSlider sliderMasterVol;
-std::vector<CustomSlider> slidersAppVol;
-
 HDC memDC;
 HBITMAP memBitmap;
 
@@ -113,29 +110,7 @@ bool isDownLMB = false;
 POINT cursorScreenPosCaptured;
 LONG cursorOffsetAccumulatorY;
 
-CustomSlider* whichSliderTouched(POINT mousePos)
-{
-    if (sliderMasterVol.intersects(mousePos))
-        return &sliderMasterVol;
-    for (auto& slider : slidersAppVol)
-        if (slider.intersects(mousePos))
-            return &slider;
-    return nullptr;
-}
-
-void recalculateSliderRects(HWND hWnd)
-{
-    RECT windowRect;
-    GetClientRect(hWnd, &windowRect);
-    LONG windowHeight = windowRect.bottom;
-
-    sliderMasterVol.setRect({ 0, margin, sliderWidth, windowHeight - margin });
-    int offset = sliderWidth + 30;
-    for (auto& slider : slidersAppVol) {
-        slider.setRect({ offset, margin, offset + sliderWidth, windowHeight - margin });
-        offset += sliderWidth;
-    }
-}
+SliderManager sliderManager;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -206,16 +181,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_TIMER:
         if (wParam == IDT_TIMER_1) {
             if (cursorOffsetAccumulatorY) {
-                float sliderHeight = sliderMasterVol.getHeight();
-                float val = std::clamp(sliderMasterVol.getValue() + (float)cursorOffsetAccumulatorY / sliderHeight, 0.f, 1.f);
-                ListenerAudio_MasterVolume::get().setValue(val);
+                float sliderHeight = sliderManager.master().getHeight();
+                float val = sliderManager.master().getValue() + (float)cursorOffsetAccumulatorY / sliderHeight;
+                ListenerAudio_MasterVolume::get().setValue(std::clamp(val, 0.f, 1.f));
                 cursorOffsetAccumulatorY = 0;
             }
         }
         break;
 
     case WM_REFRESH_MASTER_VOL: {
-        sliderMasterVol.setValue(ListenerAudio_MasterVolume::get().getValue());
+        sliderManager.master().setValue(ListenerAudio_MasterVolume::get().getValue());
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }
@@ -223,13 +198,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_REFRESH_APP_VOLUMES: {
         ListenerAudio_AllApplications::get().getInfo(appInfos);
 
-        slidersAppVol.resize(0);
+        sliderManager.apps().resize(0);
         for (auto& appInfo : appInfos) {
             CustomSlider slider { appInfo.currentVol, appInfo.pid };
-            slidersAppVol.emplace_back(slider);
+            sliderManager.apps().emplace_back(slider);
         }
 
-        recalculateSliderRects(hWnd);
+        sliderManager.recalculateSliderRects(hWnd);
 
         InvalidateRect(hWnd, NULL, TRUE);
     } break;
@@ -253,7 +228,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         memBitmap = CreateCompatibleBitmap(hdc, LOWORD(lParam), HIWORD(lParam));
         ReleaseDC(hWnd, hdc);
 
-        recalculateSliderRects(hWnd);
+        sliderManager.recalculateSliderRects(hWnd);
     } break;
 
     case WM_PAINT: {
@@ -267,9 +242,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         FillRect(memDC, &rect, (HBRUSH)(COLOR_WINDOW + 1));
 
-        sliderMasterVol.Draw(memDC, hBrushSlider, true);
-        for (auto& slider : slidersAppVol)
-            slider.Draw(memDC, hBrushSlider);
+        sliderManager.drawSliders(memDC);
 
         BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
         SelectObject(memDC, oldBitmap);
