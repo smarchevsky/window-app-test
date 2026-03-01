@@ -153,16 +153,6 @@ public:
         return instance;
     }
 };
-
-void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
-    LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime)
-{
-    if (idObject == OBJID_WINDOW && idChild == INDEXID_CONTAINER) {
-        DWORD processId = 0;
-        GetWindowThreadProcessId(hwnd, &processId);
-        PostMessage(AudioObserver::get().hNotify, WM_REFRESH_ANY_APP_CLOSED, 0, processId);
-    }
-}
 }
 
 void ListenerAudio_AllApplications::init(HWND callbackWnd)
@@ -182,22 +172,10 @@ void ListenerAudio_AllApplications::init(HWND callbackWnd)
 
     pDev->Release();
     pDevEnum->Release();
-
-    // HOOK for windows destruct
-    g_hook = SetWinEventHook(
-        EVENT_OBJECT_DESTROY, EVENT_OBJECT_DESTROY, // Range of events (just destroy)
-        NULL, // Handle to DLL (NULL for local hook)
-        WinEventProc, // Our callback
-        0, 0, // Process/Thread ID (0 = all)
-        WINEVENT_OUTOFCONTEXT // Flags
-    );
 }
 
 void ListenerAudio_AllApplications::uninit()
 {
-    if (g_hook)
-        UnhookWinEvent(g_hook);
-
     if (g_pSessionManager)
         g_pSessionManager->UnregisterSessionNotification(&AudioObserver::get()), g_pSessionManager = nullptr;
     AudioObserver::get().hNotify = nullptr;

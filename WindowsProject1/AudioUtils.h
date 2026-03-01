@@ -10,7 +10,6 @@ enum {
     _____WM_USER = WM_USER,
     WM_REFRESH_MASTER_VOL,
     WM_REFRESH_APP_VOLUMES,
-    WM_REFRESH_ANY_APP_CLOSED,
     IDT_TIMER_1,
 };
 
@@ -57,7 +56,6 @@ struct AppAudioInfo {
 struct IAudioSessionManager2;
 class ListenerAudio_AllApplications {
     IAudioSessionManager2* g_pSessionManager;
-    HWINEVENTHOOK g_hook; // to detect app close
 
 public:
     void init(HWND hwnd);
