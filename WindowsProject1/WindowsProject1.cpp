@@ -119,7 +119,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         memDC = CreateCompatibleDC(nullptr);
         // hLabel = CreateWindow(L"STATIC", L"Drag to move: X: 0, Y: 0",
         //     WS_VISIBLE | WS_CHILD, 20, 20, 300, 20, hWnd, NULL, NULL, NULL);
-        
+
         AudioUpdateListener::get().init(hWnd);
         break;
     }
@@ -184,8 +184,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_REFRESH_VOL_MASTER: {
-        float fVol = *(float*)&wParam;
-        sliderManager.getSlider(SliderId::Master).setValue(fVol);
+        AudioUpdateInfo info { 0 };
+        info._wp = wParam, info._lp = lParam;
+        sliderManager.getSlider(SliderId::Master).setValue(info.vol);
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }

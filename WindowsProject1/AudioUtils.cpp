@@ -55,9 +55,9 @@ public:
     {
         if (!pNotify)
             return E_INVALIDARG;
-        float volumeLevel = pNotify->fMasterVolume * 100.0f; // 0.0 to 100.0
-        BOOL muted = pNotify->bMuted;
-        PostMessage(_hWnd, WM_APP + 1, *(WPARAM*)&pNotify->fMasterVolume, 0);
+        AudioUpdateInfo info { 0 };
+        info.vol = pNotify->fMasterVolume, info.muted = pNotify->bMuted;
+        PostMessage(_hWnd, WM_APP + 1, info._wp, info._lp);
         return S_OK;
     }
 };
@@ -243,9 +243,13 @@ void AudioUpdateListener::init(HWND hWnd)
     pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&pEndpointVolume);
 
     // extract default vol
-    float currentVolume = 0.0f;
-    pEndpointVolume->GetMasterVolumeLevelScalar(&currentVolume);
-    PostMessage(hWnd, WM_APP + 1, *(WPARAM*)&currentVolume, 0);
+    BOOL bMute;
+    AudioUpdateInfo info { 0 };
+    pEndpointVolume->GetMasterVolumeLevelScalar(&info.vol);
+    pEndpointVolume->GetMute(&bMute);
+    info.muted = bMute;
+
+    PostMessage(hWnd, WM_REFRESH_VOL_MASTER, info._wp, info._lp);
 
     // create event listener
     pCallback = new CVolumeNotification(hWnd);

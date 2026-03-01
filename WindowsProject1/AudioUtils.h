@@ -6,12 +6,32 @@
 #include <unordered_map>
 #include <vector>
 
+typedef DWORD PID;
+
 enum {
     _____WM_APP = WM_APP,
     WM_REFRESH_VOL_MASTER,
     WM_REFRESH_VOL_APP,
     IDT_TIMER_1,
 };
+
+struct AudioUpdateInfo {
+    union {
+        struct {
+            WPARAM _wp;
+            LPARAM _lp;
+        };
+        struct {
+            PID pid;
+            float vol;
+            bool muted;
+        };
+    };
+};
+
+static_assert(sizeof(WPARAM) == 8);
+static_assert(sizeof(LPARAM) == 8);
+static_assert(sizeof(AudioUpdateInfo) <= 16);
 
 class CoinitializeWrapper {
 public:
