@@ -55,7 +55,7 @@ public:
     {
         if (!pNotify)
             return E_INVALIDARG;
-        AudioUpdateInfo info(AudioUpdateInfo::Master, (PID)0, pNotify->fMasterVolume, pNotify->bMuted);
+        AudioUpdateInfo info(VolumeType::Master, (PID)0, pNotify->fMasterVolume, pNotify->bMuted);
         PostMessage(_hWnd, WM_REFRESH_VOL, info._wp, info._lp);
         return S_OK;
     }
@@ -100,7 +100,7 @@ public:
     HRESULT STDMETHODCALLTYPE OnSimpleVolumeChanged(
         float newVol, BOOL newMute, LPCGUID) override
     {
-        AudioUpdateInfo info(AudioUpdateInfo::App, _pid, newVol, newMute);
+        AudioUpdateInfo info(VolumeType::App, _pid, newVol, newMute);
         PostMessage(_hWnd, WM_REFRESH_VOL, info._wp, info._lp);
         // wprintf(L"[PID %u] Volume: %.2f | Muted: %s\n", _pid, newVol, newMute ? L"Yes" : L"No");
         return S_OK;
@@ -119,7 +119,7 @@ public:
                 g_trackedSessions.erase(it);
                 Release();
             }
-            AudioUpdateInfo info(AudioUpdateInfo::App, _pid, 0, false);
+            AudioUpdateInfo info(VolumeType::App, _pid, 0, false);
             PostMessage(_hWnd, WM_APP_UNREGISTERED, info._wp, info._lp);
         }
         return S_OK;
@@ -178,7 +178,7 @@ public:
             float vol;
             pVol->GetMasterVolume(&vol);
             pVol->GetMute(&bMute);
-            AudioUpdateInfo info(AudioUpdateInfo::App, pid, vol, bMute);
+            AudioUpdateInfo info(VolumeType::App, pid, vol, bMute);
             PostMessage(_hWnd, WM_APP_REGISTERED, info._wp, info._lp);
             wprintf(L"New session [PID %u], vol: %d\n", pid, (int)(info._vol * 100));
             pVol->Release();
@@ -228,7 +228,7 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr, HWND hWnd)
             float vol;
             pVol->GetMasterVolume(&vol);
             pVol->GetMute(&bMute);
-            AudioUpdateInfo info(AudioUpdateInfo::App, pid, vol, bMute);
+            AudioUpdateInfo info(VolumeType::App, pid, vol, bMute);
             PostMessage(hWnd, WM_APP_REGISTERED, info._wp, info._lp);
             wprintf(L"Registering [PID %u], vol: %d\n", pid, (int)(info._vol * 100));
             pVol->Release();
@@ -261,7 +261,7 @@ void AudioUpdateListener::init(HWND hWnd)
     float vol;
     pEndpointVolume->GetMasterVolumeLevelScalar(&vol);
     pEndpointVolume->GetMute(&bMute);
-    AudioUpdateInfo info(AudioUpdateInfo::Master, (PID)0, vol, bMute);
+    AudioUpdateInfo info(VolumeType::Master, (PID)0, vol, bMute);
     PostMessage(hWnd, WM_REFRESH_VOL, info._wp, info._lp);
 
     // create application event listener
@@ -481,19 +481,6 @@ void Slider::draw(HDC hdc, bool isSystem) const
 // USER INTERFACE MANAGER
 //
 
-// std::optional<PID> SliderManager::getHoveredSlider(POINT mousePos)
-//{
-//     std::optional<PID> result;
-//     if (sliderMaster.intersects(mousePos))
-//         return {};
-//
-//     for (int i = 0; i < slidersApp.size(); ++i)
-//         if (slidersApp.at(i).intersects(mousePos))
-//             return slidersApp.at(i).getPID();
-//
-//     return SliderId::None;
-// }
-
 void SliderManager::addAppSlider(PID pid, float vol, bool muted)
 {
     auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == pid; });
@@ -512,6 +499,20 @@ void SliderManager::setSliderValue(PID pid, float vol, bool muted)
     if (it != slidersApp.end()) {
         it->setValue(vol);
     }
+}
+
+SliderPickInfo SliderManager::getHoveredSlider(POINT mousePos)
+{
+    if (sliderMaster.intersects(mousePos)) {
+        return SliderPickInfo(VolumeType::Master, (PID)0);
+    }
+
+    for (int i = 0; i < slidersApp.size(); ++i)
+        if (slidersApp.at(i).intersects(mousePos)) {
+            return SliderPickInfo(VolumeType::App, slidersApp.at(i).getPID());
+        }
+
+    return {};
 }
 
 void SliderManager::recalculateSliderRects(HWND hWnd)

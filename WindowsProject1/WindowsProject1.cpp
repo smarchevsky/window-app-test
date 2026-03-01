@@ -197,9 +197,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_REFRESH_VOL: {
         AudioUpdateInfo info(wParam, lParam);
-        if (info._type == AudioUpdateInfo::Master)
+        if (info._type == VolumeType::Master)
             sliderManager.getMaster().setValue(info._vol);
-        else if (info._type == AudioUpdateInfo::App) {
+        else if (info._type == VolumeType::App) {
             sliderManager.setSliderValue(info._pid, info._vol, info._isMuted);
         }
 

@@ -16,9 +16,11 @@ enum {
     IDT_TIMER_1,
 };
 
+enum class VolumeType : uint8_t { Master,
+    App };
+
 struct AudioUpdateInfo {
-    enum Type : uint8_t { Master,
-        App };
+
     union {
         struct {
             WPARAM _wp;
@@ -28,10 +30,10 @@ struct AudioUpdateInfo {
             PID _pid;
             float _vol;
             bool _isMuted;
-            Type _type;
+            VolumeType _type;
         };
     };
-    AudioUpdateInfo(Type type, PID pid, float vol, bool isMuted) { _pid = pid, _vol = vol, _isMuted = isMuted, _type = type; }
+    AudioUpdateInfo(VolumeType type, PID pid, float vol, bool isMuted) { _pid = pid, _vol = vol, _isMuted = isMuted, _type = type; }
     AudioUpdateInfo(WPARAM wp, LPARAM lp) { _wp = wp, _lp = lp; }
 };
 
@@ -138,6 +140,14 @@ public:
 // SLIDER MANAGER
 //
 
+struct SliderPickInfo {
+    SliderPickInfo(VolumeType type, PID pid) { _type = type, _pid = pid, _valid = true; }
+    SliderPickInfo() = default;
+    PID _pid;
+    VolumeType _type;
+    bool _valid;
+};
+
 class SliderManager {
     Slider sliderMaster {};
     std::vector<Slider> slidersApp;
@@ -147,8 +157,7 @@ public:
     void addAppSlider(PID pid, float vol, bool muted);
     void removeAppSlider(PID pid);
     void setSliderValue(PID pid, float vol, bool muted);
-    //void removeAppSlider(PID pid);
-    // std::optional<PID> getHoveredSlider(POINT mousePos);
+    SliderPickInfo getHoveredSlider(POINT mousePos);
 
     void recalculateSliderRects(HWND hWnd);
     void drawSliders(HDC hdc);
