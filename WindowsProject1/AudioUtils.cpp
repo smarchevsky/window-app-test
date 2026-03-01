@@ -209,8 +209,17 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr)
             pCtrl2->Release();
         }
 
-        wprintf(L"Registering PID %lu\n", pid);
+        // extract default vol
+        ISimpleAudioVolume* pVol = NULL;
+        if (SUCCEEDED(pCtrl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol))) {
+            float vol = 0;
+            pVol->GetMasterVolume(&vol);
 
+            wprintf(L"Registering PID %lu, vol: %d\n", pid, (int)(vol * 100));
+            pVol->Release();
+        }
+
+        // create event listener
         AudioSessionEvents* pEvents = new AudioSessionEvents(pid, pCtrl);
         pCtrl->RegisterAudioSessionNotification(pEvents);
         pEvents->Release();
@@ -232,12 +241,15 @@ void ListenerAudio_AllApplications::init(HWND hWnd)
 
     // master
     pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&pEndpointVolume);
-    pCallback = new CVolumeNotification(hWnd);
-    pEndpointVolume->RegisterControlChangeNotify(pCallback);
 
+    // extract default vol
     float currentVolume = 0.0f;
     pEndpointVolume->GetMasterVolumeLevelScalar(&currentVolume);
     PostMessage(hWnd, WM_APP + 1, *(WPARAM*)&currentVolume, 0);
+
+    // create event listener
+    pCallback = new CVolumeNotification(hWnd);
+    pEndpointVolume->RegisterControlChangeNotify(pCallback);
 
     // apps
     pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, (void**)&pMgr);
