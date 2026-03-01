@@ -41,7 +41,7 @@ class ListenerAudio_AllApplications {
     IAudioSessionNotification* pNotif {}; // apps
 
 public:
-    void init(HWND hwnd);
+    void init(HWND hWnd);
     void uninit();
 
     static ListenerAudio_AllApplications& get()

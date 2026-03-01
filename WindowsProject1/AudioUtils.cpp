@@ -20,11 +20,13 @@ std::vector<IAudioSessionControl*> g_trackedSessions;
 std::mutex g_mutex;
 
 class CVolumeNotification : public IAudioEndpointVolumeCallback {
+    HWND _hWnd;
     LONG _cRef;
 
 public:
-    CVolumeNotification()
-        : _cRef(1)
+    CVolumeNotification(HWND hWnd)
+        : _hWnd(hWnd)
+        , _cRef(1)
     {
     }
 
@@ -53,13 +55,9 @@ public:
     {
         if (!pNotify)
             return E_INVALIDARG;
-
         float volumeLevel = pNotify->fMasterVolume * 100.0f; // 0.0 to 100.0
         BOOL muted = pNotify->bMuted;
-
-        std::cout << "Volume changed: " << volumeLevel << "%"
-                  << (muted ? " [MUTED]" : "") << std::endl;
-
+        PostMessage(_hWnd, WM_APP + 1, *(WPARAM*)&pNotify->fMasterVolume, 0);
         return S_OK;
     }
 };
@@ -226,17 +224,20 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr)
 }
 }
 
-void ListenerAudio_AllApplications::init(HWND callbackWnd)
+void ListenerAudio_AllApplications::init(HWND hWnd)
 {
-
     CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
         __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
     pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
 
     // master
     pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&pEndpointVolume);
-    pCallback = new CVolumeNotification();
+    pCallback = new CVolumeNotification(hWnd);
     pEndpointVolume->RegisterControlChangeNotify(pCallback);
+
+    float currentVolume = 0.0f;
+    pEndpointVolume->GetMasterVolumeLevelScalar(&currentVolume);
+    PostMessage(hWnd, WM_APP + 1, *(WPARAM*)&currentVolume, 0);
 
     // apps
     pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, (void**)&pMgr);
