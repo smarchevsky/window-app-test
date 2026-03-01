@@ -143,6 +143,8 @@ public:
 struct SliderPickInfo {
     SliderPickInfo(VolumeType type, PID pid) { _type = type, _pid = pid, _valid = true; }
     SliderPickInfo() = default;
+    bool operator==(const SliderPickInfo& rhs) const { return _pid == rhs._pid && _type == rhs._type && _valid == rhs._valid; }
+    bool operator!=(const SliderPickInfo& rhs) const { return !operator==(rhs); }
     PID _pid;
     VolumeType _type;
     bool _valid;

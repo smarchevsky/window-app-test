@@ -20,6 +20,8 @@ WCHAR szTitle[MAX_LOADSTRING]; // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING]; // the main window class name
 
 HBRUSH hBrushSlider = CreateSolidBrush(RGB(100, 100, 250));
+HCURSOR cursorDefault = LoadCursor(nullptr, IDC_ARROW);
+HCURSOR cursorHand = LoadCursor(nullptr, IDC_HAND);
 
 void CreateConsole()
 {
@@ -60,7 +62,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         wcex.cbWndExtra = 0;
         wcex.hInstance = hInstance;
         wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WINDOWSPROJECT1));
-        wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        wcex.hCursor = cursorDefault;
         wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_WINDOWSPROJECT1);
         wcex.lpszMenuName = NULL;
@@ -154,17 +156,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
 
     case WM_MOUSEMOVE: {
-        if (isDownLMB) {
-            POINT currentPos;
-            GetCursorPos(&currentPos);
+        POINT cursorScreenPos;
+        GetCursorPos(&cursorScreenPos);
 
-            int dx = currentPos.x - cursorScreenPosCaptured.x;
-            int dy = currentPos.y - cursorScreenPosCaptured.y;
+        if (isDownLMB) {
+            int dx = cursorScreenPos.x - cursorScreenPosCaptured.x;
+            int dy = cursorScreenPos.y - cursorScreenPosCaptured.y;
 
             if (dx || dy) {
                 cursorOffsetAccumulatorY -= dy;
                 SetCursorPos(cursorScreenPosCaptured.x, cursorScreenPosCaptured.y);
             }
+
+        } else {
+            POINT cursorClientPos = cursorScreenPos;
+            ScreenToClient(hWnd, &cursorClientPos);
+            auto newHoverInfo = sliderManager.getHoveredSlider(cursorClientPos);
+            SetCursor(newHoverInfo._valid ? cursorHand : cursorDefault);
         }
         break;
     }
