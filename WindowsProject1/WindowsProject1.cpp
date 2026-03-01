@@ -119,7 +119,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         memDC = CreateCompatibleDC(nullptr);
         // hLabel = CreateWindow(L"STATIC", L"Drag to move: X: 0, Y: 0",
         //     WS_VISIBLE | WS_CHILD, 20, 20, 300, 20, hWnd, NULL, NULL, NULL);
-        ListenerAudio_MasterVolume::get().init(hWnd);
+        
         ListenerAudio_AllApplications::get().init(hWnd);
         break;
     }
@@ -199,7 +199,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     } break;
 
     case WM_DESTROY: {
-        ListenerAudio_MasterVolume::get().uninit();
         ListenerAudio_AllApplications::get().uninit();
         IconManager::get().uninit();
 

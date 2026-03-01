@@ -19,32 +19,6 @@ public:
     ~CoinitializeWrapper();
 };
 
-//
-// MASTER
-//
-
-struct IAudioEndpointVolume;
-class ListenerAudio_MasterVolume {
-    IAudioEndpointVolume* g_pVolumeControl;
-
-public:
-    void init(HWND callbackWnd);
-    void uninit();
-
-    static ListenerAudio_MasterVolume& get()
-    {
-        static ListenerAudio_MasterVolume instance;
-        return instance;
-    }
-
-private:
-    ListenerAudio_MasterVolume() = default;
-};
-
-//
-// APPLICATIONS
-//
-
 struct AppAudioInfo {
     DWORD pid;
     float currentVol;
@@ -53,14 +27,18 @@ struct AppAudioInfo {
 
 struct IMMDeviceEnumerator;
 struct IMMDevice;
-struct IAudioSessionManager2;
+struct IAudioEndpointVolume; // master
+struct IAudioEndpointVolumeCallback;
+struct IAudioSessionManager2; // apps
 struct IAudioSessionNotification;
 
 class ListenerAudio_AllApplications {
-    IMMDeviceEnumerator* pEnumerator;
-    IMMDevice* pDevice;
-    IAudioSessionManager2* pMgr;
-    IAudioSessionNotification* pNotif;
+    IMMDeviceEnumerator* pEnumerator {};
+    IMMDevice* pDevice {};
+    IAudioEndpointVolume* pEndpointVolume {}; // master
+    IAudioEndpointVolumeCallback* pCallback {}; // master
+    IAudioSessionManager2* pMgr {}; // apps
+    IAudioSessionNotification* pNotif {}; // apps
 
 public:
     void init(HWND hwnd);

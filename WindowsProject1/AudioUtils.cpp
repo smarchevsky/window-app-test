@@ -7,6 +7,7 @@
 #include <psapi.h>
 
 // #include <cassert>
+#include <iostream>
 #include <mutex>
 #include <string>
 
@@ -14,80 +15,54 @@
 CoinitializeWrapper::CoinitializeWrapper() { (void)CoInitialize(NULL); }
 CoinitializeWrapper::~CoinitializeWrapper() { CoUninitialize(); }
 
-//
-// MASTER
-//
-
-namespace {
-class VolumeChangeListener : public IAudioEndpointVolumeCallback {
-public:
-    HWND hNotify;
-
-    STDMETHODIMP QueryInterface(REFIID iid, void** ppv)
-    {
-        if (iid == __uuidof(IUnknown) || iid == __uuidof(IAudioEndpointVolumeCallback)) {
-            *ppv = static_cast<IAudioEndpointVolumeCallback*>(this);
-            return S_OK;
-        }
-        return E_NOINTERFACE;
-    }
-    STDMETHODIMP_(ULONG)
-    AddRef() { return 1; }
-    STDMETHODIMP_(ULONG)
-    Release() { return 1; }
-
-    // This triggers when volume changes
-    STDMETHODIMP OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pData)
-    {
-        //int volumePercent = (int)(pData->fMasterVolume * 100 + 0.5f);
-        //printf("Master vol: %d\n", volumePercent);
-        PostMessage(hNotify, WM_REFRESH_VOL_MASTER, *(WPARAM*)&pData->fMasterVolume, 0);
-        return S_OK;
-    }
-
-    static VolumeChangeListener& get()
-    {
-        static VolumeChangeListener instance;
-        return instance;
-    }
-};
-}
-
-void ListenerAudio_MasterVolume::init(HWND callbackWnd)
-{
-    VolumeChangeListener::get().hNotify = callbackWnd;
-
-    IMMDeviceEnumerator* pEnumerator = NULL;
-    IMMDevice* pDevice = NULL;
-
-    CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
-    pEnumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &pDevice);
-    pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&g_pVolumeControl);
-
-    // instant refresh ?
-    PostMessage(callbackWnd, WM_REFRESH_VOL_MASTER, 0, 0);
-
-    g_pVolumeControl->RegisterControlChangeNotify(&VolumeChangeListener::get());
-
-    pDevice->Release();
-    pEnumerator->Release();
-}
-
-void ListenerAudio_MasterVolume::uninit()
-{
-    if (g_pVolumeControl) {
-        g_pVolumeControl->UnregisterControlChangeNotify(&VolumeChangeListener::get());
-        g_pVolumeControl->Release();
-    }
-}
-
-//
-// APPLICATIONS
-//
-
 namespace {
 std::vector<IAudioSessionControl*> g_trackedSessions;
 std::mutex g_mutex;
+
+class CVolumeNotification : public IAudioEndpointVolumeCallback {
+    LONG _cRef;
+
+public:
+    CVolumeNotification()
+        : _cRef(1)
+    {
+    }
+
+    // IUnknown methods
+    ULONG STDMETHODCALLTYPE AddRef() override { return InterlockedIncrement(&_cRef); }
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG ref = InterlockedDecrement(&_cRef);
+        if (ref == 0)
+            delete this;
+        return ref;
+    }
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppv) override
+    {
+        if (riid == IID_IUnknown || riid == __uuidof(IAudioEndpointVolumeCallback)) {
+            *ppv = static_cast<IAudioEndpointVolumeCallback*>(this);
+            AddRef();
+            return S_OK;
+        }
+        *ppv = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    // Called when volume/mute changes
+    HRESULT STDMETHODCALLTYPE OnNotify(PAUDIO_VOLUME_NOTIFICATION_DATA pNotify) override
+    {
+        if (!pNotify)
+            return E_INVALIDARG;
+
+        float volumeLevel = pNotify->fMasterVolume * 100.0f; // 0.0 to 100.0
+        BOOL muted = pNotify->bMuted;
+
+        std::cout << "Volume changed: " << volumeLevel << "%"
+                  << (muted ? " [MUTED]" : "") << std::endl;
+
+        return S_OK;
+    }
+};
 
 class AudioSessionEvents : public IAudioSessionEvents {
     LONG _cRef;
@@ -253,31 +228,35 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr)
 
 void ListenerAudio_AllApplications::init(HWND callbackWnd)
 {
-    pEnumerator = nullptr;
+
     CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
         __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
-
-    pDevice = nullptr;
     pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
 
-    pMgr = nullptr;
+    // master
+    pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&pEndpointVolume);
+    pCallback = new CVolumeNotification();
+    pEndpointVolume->RegisterControlChangeNotify(pCallback);
+
+    // apps
     pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, (void**)&pMgr);
-
-    // Register on all currently active sessions
     RegisterAllExistingSessions(pMgr);
-
-    // Register for future sessions
     pNotif = new SessionNotification();
     pMgr->RegisterSessionNotification(pNotif);
-
-    wprintf(L"Monitoring all app volume changes... (press Enter to quit)\n");
 }
 
 void ListenerAudio_AllApplications::uninit()
 {
+    // apps
     pMgr->UnregisterSessionNotification(pNotif);
     pNotif->Release();
     pMgr->Release();
+
+    // master
+    pEndpointVolume->UnregisterControlChangeNotify(pCallback);
+    pCallback->Release();
+    pEndpointVolume->Release();
+
     pDevice->Release();
     pEnumerator->Release();
 }
