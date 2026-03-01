@@ -115,22 +115,19 @@ static bool isValidRect(const RECT& rect) { return rect.right > rect.left && rec
 
 static constexpr int sliderWidth = 80;
 static constexpr int margin = 10;
-class CustomSlider {
 
+class Slider {
     RECT m_rect;
     float m_value;
     PID m_pid;
 
 public:
-    CustomSlider(PID pid, float value) { m_rect = { 0 }, m_pid = pid, m_value = value; }
-    CustomSlider() = default;
+    Slider(PID pid, float value) { m_rect = { 0 }, m_pid = pid, m_value = value; }
+    Slider() = default;
 
     PID getPID() const { return m_pid; }
-
     void setRect(RECT rect) { m_rect = rect; }
-
     float getHeight() const { return float(m_rect.bottom - m_rect.top); }
-
     void setValue(float value) { m_value = value; }
     float getValue() const { return m_value; }
     bool intersects(POINT pos) const { return isValidRect(m_rect) ? PtInRect(&m_rect, pos) : false; }
@@ -142,11 +139,11 @@ public:
 //
 
 class SliderManager {
-    CustomSlider sliderMasterVol {};
-    std::vector<CustomSlider> slidersAppVol;
+    Slider sliderMaster {};
+    std::vector<Slider> slidersApp;
 
 public:
-    CustomSlider& getMaster() { return sliderMasterVol; }
+    Slider& getMaster() { return sliderMaster; }
     void addAppSlider(PID pid, float vol, bool muted);
     void removeAppSlider(PID pid);
     void setSliderValue(PID pid, float vol, bool muted);

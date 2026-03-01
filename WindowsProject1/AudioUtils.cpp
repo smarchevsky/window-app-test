@@ -450,7 +450,7 @@ IconInfo IconManager::getIconMasterVol() { return iiMasterSpeaker; }
 // #include <shellapi.h>
 //  #pragma comment(lib, "Shell32.lib")
 
-void CustomSlider::draw(HDC hdc, bool isSystem) const
+void Slider::draw(HDC hdc, bool isSystem) const
 {
     float drawHeight = (m_rect.bottom - m_rect.top) * (1.f - m_value);
 
@@ -484,33 +484,32 @@ void CustomSlider::draw(HDC hdc, bool isSystem) const
 // std::optional<PID> SliderManager::getHoveredSlider(POINT mousePos)
 //{
 //     std::optional<PID> result;
-//     if (sliderMasterVol.intersects(mousePos))
+//     if (sliderMaster.intersects(mousePos))
 //         return {};
 //
-//     for (int i = 0; i < slidersAppVol.size(); ++i)
-//         if (slidersAppVol.at(i).intersects(mousePos))
-//             return slidersAppVol.at(i).getPID();
+//     for (int i = 0; i < slidersApp.size(); ++i)
+//         if (slidersApp.at(i).intersects(mousePos))
+//             return slidersApp.at(i).getPID();
 //
 //     return SliderId::None;
 // }
 
 void SliderManager::addAppSlider(PID pid, float vol, bool muted)
 {
-    auto it = std::find_if(slidersAppVol.begin(), slidersAppVol.end(), [&](const CustomSlider& s) { return s.getPID() == pid; });
-    slidersAppVol.push_back(CustomSlider(pid, vol));
-    // return &slidersAppVol.back();
+    auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == pid; });
+    slidersApp.push_back(Slider(pid, vol));
 }
 
 void SliderManager::removeAppSlider(PID pid)
 {
-    auto it = std::find_if(slidersAppVol.begin(), slidersAppVol.end(), [&](const CustomSlider& s) { return s.getPID() == pid; });
-    slidersAppVol.erase(it);
+    auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == pid; });
+    slidersApp.erase(it);
 }
 
 void SliderManager::setSliderValue(PID pid, float vol, bool muted)
 {
-    auto it = std::find_if(slidersAppVol.begin(), slidersAppVol.end(), [&](const CustomSlider& s) { return s.getPID() == pid; });
-    if (it != slidersAppVol.end()) {
+    auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == pid; });
+    if (it != slidersApp.end()) {
         it->setValue(vol);
     }
 }
@@ -521,9 +520,9 @@ void SliderManager::recalculateSliderRects(HWND hWnd)
     GetClientRect(hWnd, &windowRect);
     LONG windowHeight = windowRect.bottom;
 
-    sliderMasterVol.setRect({ 0, margin, sliderWidth, windowHeight - margin });
+    sliderMaster.setRect({ 0, margin, sliderWidth, windowHeight - margin });
     int offset = sliderWidth + 30;
-    for (auto& slider : slidersAppVol) {
+    for (auto& slider : slidersApp) {
         slider.setRect({ offset, margin, offset + sliderWidth, windowHeight - margin });
         offset += sliderWidth;
     }
@@ -531,7 +530,7 @@ void SliderManager::recalculateSliderRects(HWND hWnd)
 
 void SliderManager::drawSliders(HDC hdc)
 {
-    sliderMasterVol.draw(hdc, true);
-    for (auto& slider : slidersAppVol)
+    sliderMaster.draw(hdc, true);
+    for (auto& slider : slidersApp)
         slider.draw(hdc);
 }
