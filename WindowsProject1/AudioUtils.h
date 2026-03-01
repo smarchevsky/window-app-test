@@ -92,7 +92,7 @@ class IconManager {
     IconManager();
     IconManager(const IconManager&) = delete;
 
-    std::unordered_map<DWORD, IconInfo> cachedProcessIcons;
+    std::unordered_map<PID, IconInfo> cachedProcessIcons;
     IconInfo iiMasterSpeaker, iiMasterHeadphones, iiSystemSounds;
 
 public:
@@ -103,7 +103,7 @@ public:
         return instance;
     }
 
-    IconInfo getIconFromProcess(DWORD pid);
+    IconInfo getIconFromProcess(PID pid);
     IconInfo getIconMasterVol();
 };
 
@@ -119,7 +119,7 @@ class CustomSlider {
 
     RECT m_rect;
     float m_value;
-    DWORD m_pid;
+    PID m_pid;
 
 public:
     CustomSlider(PID pid, float value) { m_rect = { 0 }, m_pid = pid, m_value = value; }

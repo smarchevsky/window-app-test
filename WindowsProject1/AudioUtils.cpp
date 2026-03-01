@@ -63,12 +63,12 @@ public:
 
 class AudioSessionEvents : public IAudioSessionEvents {
     LONG _cRef;
-    DWORD _pid;
+    PID _pid;
     IAudioSessionControl* _pCtrl; // back-reference to owning session
     HWND _hWnd;
 
 public:
-    AudioSessionEvents(DWORD pid, IAudioSessionControl* pCtrl, HWND hWnd)
+    AudioSessionEvents(PID pid, IAudioSessionControl* pCtrl, HWND hWnd)
         : _cRef(1)
         , _pid(pid)
         , _pCtrl(pCtrl)
@@ -81,7 +81,7 @@ public:
     {
         ULONG r = InterlockedDecrement(&_cRef);
         if (!r) {
-            wprintf(L"Delete this called (PID %lu)\n", _pid);
+            wprintf(L"Delete this called [PID %u]\n", _pid);
             delete this;
         }
         return r;
@@ -102,9 +102,7 @@ public:
     {
         AudioUpdateInfo info(AudioUpdateInfo::App, _pid, newVol, newMute);
         PostMessage(_hWnd, WM_REFRESH_VOL, info._wp, info._lp);
-
-        wprintf(L"[PID %lu] Volume: %.2f | Muted: %s\n",
-            _pid, newVol, newMute ? L"Yes" : L"No");
+        // wprintf(L"[PID %u] Volume: %.2f | Muted: %s\n", _pid, newVol, newMute ? L"Yes" : L"No");
         return S_OK;
     }
 
@@ -128,7 +126,7 @@ public:
     }
     HRESULT STDMETHODCALLTYPE OnSessionDisconnected(AudioSessionDisconnectReason) override
     {
-        wprintf(L"OnSessionDisconnected (PID %lu)\n", _pid);
+        wprintf(L"OnSessionDisconnected [PID %u]\n", _pid);
         return S_OK;
     }
 };
@@ -170,7 +168,7 @@ public:
         IAudioSessionControl2* pCtrl2 = nullptr;
         pNewSession->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pCtrl2);
 
-        DWORD pid = 0;
+        PID pid = 0;
         if (pCtrl2)
             pCtrl2->GetProcessId(&pid);
 
@@ -182,7 +180,7 @@ public:
             pVol->GetMute(&bMute);
             AudioUpdateInfo info(AudioUpdateInfo::App, pid, vol, bMute);
             PostMessage(_hWnd, WM_APP_REGISTERED, info._wp, info._lp);
-            wprintf(L"New session PID %lu, vol: %d\n", pid, (int)(info._vol * 100));
+            wprintf(L"New session [PID %u], vol: %d\n", pid, (int)(info._vol * 100));
             pVol->Release();
         }
 
@@ -217,32 +215,29 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr, HWND hWnd)
         IAudioSessionControl2* pCtrl2 = nullptr;
         pCtrl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pCtrl2);
 
-        DWORD pid = 0;
+        PID pid = 0;
         if (pCtrl2) {
             pCtrl2->GetProcessId(&pid);
             pCtrl2->Release();
         }
 
-        // extract default vol
+        // extract master vol
         ISimpleAudioVolume* pVol = NULL;
         if (SUCCEEDED(pCtrl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol))) {
-
             BOOL bMute;
             float vol;
             pVol->GetMasterVolume(&vol);
             pVol->GetMute(&bMute);
             AudioUpdateInfo info(AudioUpdateInfo::App, pid, vol, bMute);
             PostMessage(hWnd, WM_APP_REGISTERED, info._wp, info._lp);
-
-            wprintf(L"Registering PID %lu, vol: %d\n", pid, (int)(info._vol * 100));
+            wprintf(L"Registering [PID %u], vol: %d\n", pid, (int)(info._vol * 100));
             pVol->Release();
         }
 
-        // create event listener
+        // create master event listener
         AudioSessionEvents* pEvents = new AudioSessionEvents(pid, pCtrl, hWnd);
         pCtrl->RegisterAudioSessionNotification(pEvents);
         pEvents->Release();
-
         pCtrl->AddRef();
         g_trackedSessions.push_back(pCtrl); // keep alive!
         pCtrl->Release();
@@ -261,7 +256,7 @@ void AudioUpdateListener::init(HWND hWnd)
     // master
     pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&pEndpointVolume);
 
-    // extract default vol
+    // extract application vol
     BOOL bMute;
     float vol;
     pEndpointVolume->GetMasterVolumeLevelScalar(&vol);
@@ -269,7 +264,7 @@ void AudioUpdateListener::init(HWND hWnd)
     AudioUpdateInfo info(AudioUpdateInfo::Master, (PID)0, vol, bMute);
     PostMessage(hWnd, WM_REFRESH_VOL, info._wp, info._lp);
 
-    // create event listener
+    // create application event listener
     pCallback = new CVolumeNotification(hWnd);
     pEndpointVolume->RegisterControlChangeNotify(pCallback);
 
@@ -296,7 +291,7 @@ void AudioUpdateListener::uninit()
     pEnumerator->Release();
 }
 
-std::wstring GetProcessName(DWORD pid)
+std::wstring GetProcessName(PID pid)
 {
     if (pid == 0)
         return L"System Sounds";
@@ -407,7 +402,7 @@ IconManager::IconManager()
     iiSystemSounds = loadIcon(L"\\imageres.dll", 104);
 }
 
-IconInfo IconManager::getIconFromProcess(DWORD pid)
+IconInfo IconManager::getIconFromProcess(PID pid)
 {
     IconInfo result = {};
 
