@@ -7,9 +7,9 @@
 #include <vector>
 
 enum {
-    _____WM_USER = WM_USER,
-    WM_REFRESH_MASTER_VOL,
-    WM_REFRESH_APP_VOLUMES,
+    _____WM_APP = WM_APP,
+    WM_REFRESH_VOL_MASTER,
+    WM_REFRESH_VOL_APP,
     IDT_TIMER_1,
 };
 
@@ -30,8 +30,6 @@ class ListenerAudio_MasterVolume {
 public:
     void init(HWND callbackWnd);
     void uninit();
-    float getValue();
-    void setValue(float val);
 
     static ListenerAudio_MasterVolume& get()
     {
@@ -53,14 +51,20 @@ struct AppAudioInfo {
     std::wstring appName;
 };
 
+struct IMMDeviceEnumerator;
+struct IMMDevice;
 struct IAudioSessionManager2;
+struct IAudioSessionNotification;
+
 class ListenerAudio_AllApplications {
-    IAudioSessionManager2* g_pSessionManager;
+    IMMDeviceEnumerator* pEnumerator;
+    IMMDevice* pDevice;
+    IAudioSessionManager2* pMgr;
+    IAudioSessionNotification* pNotif;
 
 public:
     void init(HWND hwnd);
     void uninit();
-    bool getInfo(std::vector<AppAudioInfo>& appInfos);
 
     static ListenerAudio_AllApplications& get()
     {

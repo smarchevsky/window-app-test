@@ -177,26 +177,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 auto& masterSlider = sliderManager.getSlider(SliderId::Master);
                 float sliderHeight = masterSlider.getHeight();
                 float val = masterSlider.getValue() + (float)cursorOffsetAccumulatorY / sliderHeight;
-                ListenerAudio_MasterVolume::get().setValue(std::clamp(val, 0.f, 1.f));
+                // ListenerAudio_MasterVolume::get().setValue(std::clamp(val, 0.f, 1.f));
                 cursorOffsetAccumulatorY = 0;
             }
         }
         break;
 
-    case WM_REFRESH_MASTER_VOL: {
-        sliderManager.getSlider(SliderId::Master).setValue(ListenerAudio_MasterVolume::get().getValue());
+    case WM_REFRESH_VOL_MASTER: {
+        float fVol = *(float*)&wParam;
+        sliderManager.getSlider(SliderId::Master).setValue(fVol);
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }
 
-    case WM_REFRESH_APP_VOLUMES: {
-        ListenerAudio_AllApplications::get().getInfo(appInfos);
+    case WM_REFRESH_VOL_APP: {
+        // ListenerAudio_AllApplications::get().getInfo(appInfos);
+        // sliderManager.updateApplicationInfo(appInfos);
+        // sliderManager.recalculateSliderRects(hWnd);
 
-        sliderManager.updateApplicationInfo(appInfos);
-        
-        sliderManager.recalculateSliderRects(hWnd);
-
-        InvalidateRect(hWnd, NULL, TRUE);
+        // InvalidateRect(hWnd, NULL, TRUE);
     } break;
 
     case WM_DESTROY: {
