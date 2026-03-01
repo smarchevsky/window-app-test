@@ -55,9 +55,8 @@ public:
     {
         if (!pNotify)
             return E_INVALIDARG;
-        AudioUpdateInfo info { 0 };
-        info.vol = pNotify->fMasterVolume, info.muted = pNotify->bMuted;
-        PostMessage(_hWnd, WM_APP + 1, info._wp, info._lp);
+        AudioUpdateInfo info(AudioUpdateInfo::Master, (PID)0, pNotify->fMasterVolume, pNotify->bMuted);
+        PostMessage(_hWnd, WM_REFRESH_VOL, info._wp, info._lp);
         return S_OK;
     }
 };
@@ -184,7 +183,7 @@ public:
     }
 };
 
-void RegisterAllExistingSessions(IAudioSessionManager2* pMgr)
+void RegisterAllExistingSessions(IAudioSessionManager2* pMgr, HWND hWnd)
 {
     for (auto* s : g_trackedSessions)
         s->Release();
@@ -212,10 +211,15 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr)
         // extract default vol
         ISimpleAudioVolume* pVol = NULL;
         if (SUCCEEDED(pCtrl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol))) {
-            float vol = 0;
-            pVol->GetMasterVolume(&vol);
 
-            wprintf(L"Registering PID %lu, vol: %d\n", pid, (int)(vol * 100));
+            BOOL bMute;
+            float vol;
+            pVol->GetMasterVolume(&vol);
+            pVol->GetMute(&bMute);
+            AudioUpdateInfo info(AudioUpdateInfo::App, pid, vol, bMute);
+
+            PostMessage(hWnd, WM_APP_REGISTERED, info._wp, info._lp);
+            wprintf(L"Registering PID %lu, vol: %d\n", pid, (int)(info._vol * 100));
             pVol->Release();
         }
 
@@ -244,12 +248,11 @@ void AudioUpdateListener::init(HWND hWnd)
 
     // extract default vol
     BOOL bMute;
-    AudioUpdateInfo info { 0 };
-    pEndpointVolume->GetMasterVolumeLevelScalar(&info.vol);
+    float vol;
+    pEndpointVolume->GetMasterVolumeLevelScalar(&vol);
     pEndpointVolume->GetMute(&bMute);
-    info.muted = bMute;
-
-    PostMessage(hWnd, WM_REFRESH_VOL_MASTER, info._wp, info._lp);
+    AudioUpdateInfo info(AudioUpdateInfo::Master, (PID)0, vol, bMute);
+    PostMessage(hWnd, WM_REFRESH_VOL, info._wp, info._lp);
 
     // create event listener
     pCallback = new CVolumeNotification(hWnd);
@@ -257,7 +260,7 @@ void AudioUpdateListener::init(HWND hWnd)
 
     // apps
     pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, (void**)&pMgr);
-    RegisterAllExistingSessions(pMgr);
+    RegisterAllExistingSessions(pMgr, hWnd);
     pNotif = new SessionNotification();
     pMgr->RegisterSessionNotification(pNotif);
 }
@@ -469,40 +472,24 @@ void CustomSlider::draw(HDC hdc, bool isSystem) const
 // USER INTERFACE MANAGER
 //
 
-inline SliderId IndexToSelect(int index) { return (SliderId)((int)SliderId::App_0 + index); }
-inline int SelectToIndex(SliderId select) { return (int)select - (int)SliderId::App_0; }
+// std::optional<PID> SliderManager::getHoveredSlider(POINT mousePos)
+//{
+//     std::optional<PID> result;
+//     if (sliderMasterVol.intersects(mousePos))
+//         return {};
+//
+//     for (int i = 0; i < slidersAppVol.size(); ++i)
+//         if (slidersAppVol.at(i).intersects(mousePos))
+//             return slidersAppVol.at(i).getPID();
+//
+//     return SliderId::None;
+// }
 
-CustomSlider& SliderManager::getSlider(SliderId select)
+CustomSlider* SliderManager::addAppSlider(PID pid, float vol, bool muted)
 {
-    if (select == SliderId::Master)
-        return sliderMasterVol;
-
-    else if ((int)select >= (int)SliderId::App_0)
-        return slidersAppVol.at(SelectToIndex(select));
-
-    static CustomSlider nullSlider;
-    return nullSlider;
-}
-
-SliderId SliderManager::getHoveredSlider(POINT mousePos)
-{
-    if (sliderMasterVol.intersects(mousePos))
-        return SliderId::Master;
-
-    for (int i = 0; i < slidersAppVol.size(); ++i)
-        if (slidersAppVol.at(i).intersects(mousePos))
-            return IndexToSelect(i);
-
-    return SliderId::None;
-}
-
-void SliderManager::updateApplicationInfo(std::vector<AppAudioInfo>& appInfos)
-{
-    slidersAppVol.resize(0);
-    for (auto& appInfo : appInfos) {
-        CustomSlider slider { appInfo.currentVol, appInfo.pid };
-        slidersAppVol.emplace_back(slider);
-    }
+    auto it = std::find_if(slidersAppVol.begin(), slidersAppVol.end(), [&](const CustomSlider& s) { return s.getPID() == pid; });
+    slidersAppVol.push_back(CustomSlider(pid, vol));
+    return &slidersAppVol.back();
 }
 
 void SliderManager::recalculateSliderRects(HWND hWnd)

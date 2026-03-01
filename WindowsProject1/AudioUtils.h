@@ -10,23 +10,29 @@ typedef DWORD PID;
 
 enum {
     _____WM_APP = WM_APP,
-    WM_REFRESH_VOL_MASTER,
-    WM_REFRESH_VOL_APP,
+    WM_REFRESH_VOL,
+    WM_APP_REGISTERED,
+    WM_APP_UNREGISTERED,
     IDT_TIMER_1,
 };
 
 struct AudioUpdateInfo {
+    enum Type : uint8_t { Master,
+        App };
     union {
         struct {
             WPARAM _wp;
             LPARAM _lp;
         };
         struct {
-            PID pid;
-            float vol;
-            bool muted;
+            PID _pid;
+            float _vol;
+            bool _isMuted;
+            Type _type;
         };
     };
+    AudioUpdateInfo(Type type, PID pid, float vol, bool isMuted) { _pid = pid, _vol = vol, _isMuted = isMuted, _type = type; }
+    AudioUpdateInfo(WPARAM wp, LPARAM lp) { _wp = wp, _lp = lp; }
 };
 
 static_assert(sizeof(WPARAM) == 8);
@@ -37,12 +43,6 @@ class CoinitializeWrapper {
 public:
     CoinitializeWrapper();
     ~CoinitializeWrapper();
-};
-
-struct AppAudioInfo {
-    DWORD pid;
-    float currentVol;
-    std::wstring appName;
 };
 
 struct IMMDeviceEnumerator;
@@ -122,8 +122,10 @@ class CustomSlider {
     DWORD m_pid;
 
 public:
-    CustomSlider(float value, DWORD pid) { m_rect = { 0 }, m_pid = pid, m_value = value; }
+    CustomSlider(PID pid, float value) { m_rect = { 0 }, m_pid = pid, m_value = value; }
     CustomSlider() = default;
+
+    PID getPID() const { return m_pid; }
 
     void setRect(RECT rect) { m_rect = rect; }
 
@@ -139,20 +141,15 @@ public:
 // SLIDER MANAGER
 //
 
-enum class SliderId {
-    None,
-    Master,
-    App_0
-};
-
 class SliderManager {
     CustomSlider sliderMasterVol {};
     std::vector<CustomSlider> slidersAppVol;
 
 public:
-    CustomSlider& getSlider(SliderId select);
-    SliderId getHoveredSlider(POINT mousePos);
-    void updateApplicationInfo(std::vector<AppAudioInfo>& appInfos);
+    CustomSlider& getMaster() { return sliderMasterVol; }
+    CustomSlider* addAppSlider(PID pid, float vol, bool muted);
+    void removeAppSlider(PID pid);
+    // std::optional<PID> getHoveredSlider(POINT mousePos);
 
     void recalculateSliderRects(HWND hWnd);
     void drawSliders(HDC hdc);

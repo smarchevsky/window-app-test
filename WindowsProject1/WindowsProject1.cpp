@@ -99,8 +99,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     return (int)msg.wParam;
 }
 
-std::vector<AppAudioInfo> appInfos;
-
 HDC memDC;
 HBITMAP memBitmap;
 
@@ -171,33 +169,35 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
 
-    case WM_TIMER:
+    case WM_TIMER: {
         if (wParam == IDT_TIMER_1) {
             if (cursorOffsetAccumulatorY) {
-                auto& masterSlider = sliderManager.getSlider(SliderId::Master);
+                auto& masterSlider = sliderManager.getMaster();
                 float sliderHeight = masterSlider.getHeight();
                 float val = masterSlider.getValue() + (float)cursorOffsetAccumulatorY / sliderHeight;
                 // ListenerAudio_MasterVolume::get().setValue(std::clamp(val, 0.f, 1.f));
                 cursorOffsetAccumulatorY = 0;
             }
         }
-        break;
+    } break;
 
-    case WM_REFRESH_VOL_MASTER: {
-        AudioUpdateInfo info { 0 };
-        info._wp = wParam, info._lp = lParam;
-        sliderManager.getSlider(SliderId::Master).setValue(info.vol);
+    case WM_APP_REGISTERED: {
+        AudioUpdateInfo info(wParam, lParam);
+        sliderManager.addAppSlider(info._pid, info._vol, info._isMuted);
+        sliderManager.recalculateSliderRects(hWnd);
+        InvalidateRect(hWnd, NULL, TRUE);
+    } break;
+
+    case WM_REFRESH_VOL: {
+        AudioUpdateInfo info(wParam, lParam);
+        if (info._type == AudioUpdateInfo::Master)
+            sliderManager.getMaster().setValue(info._vol);
+        else if (info._type == AudioUpdateInfo::App) {
+        }
+
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
     }
-
-    case WM_REFRESH_VOL_APP: {
-        // AudioUpdateListener::get().getInfo(appInfos);
-        // sliderManager.updateApplicationInfo(appInfos);
-        // sliderManager.recalculateSliderRects(hWnd);
-
-        // InvalidateRect(hWnd, NULL, TRUE);
-    } break;
 
     case WM_DESTROY: {
         AudioUpdateListener::get().uninit();
