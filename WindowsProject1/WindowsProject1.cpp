@@ -120,7 +120,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // hLabel = CreateWindow(L"STATIC", L"Drag to move: X: 0, Y: 0",
         //     WS_VISIBLE | WS_CHILD, 20, 20, 300, 20, hWnd, NULL, NULL, NULL);
         
-        ListenerAudio_AllApplications::get().init(hWnd);
+        AudioUpdateListener::get().init(hWnd);
         break;
     }
 
@@ -191,7 +191,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
 
     case WM_REFRESH_VOL_APP: {
-        // ListenerAudio_AllApplications::get().getInfo(appInfos);
+        // AudioUpdateListener::get().getInfo(appInfos);
         // sliderManager.updateApplicationInfo(appInfos);
         // sliderManager.recalculateSliderRects(hWnd);
 
@@ -199,7 +199,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     } break;
 
     case WM_DESTROY: {
-        ListenerAudio_AllApplications::get().uninit();
+        AudioUpdateListener::get().uninit();
         IconManager::get().uninit();
 
         DeleteObject(memBitmap);

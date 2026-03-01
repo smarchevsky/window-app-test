@@ -233,7 +233,7 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr)
 }
 }
 
-void ListenerAudio_AllApplications::init(HWND hWnd)
+void AudioUpdateListener::init(HWND hWnd)
 {
     CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
         __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
@@ -258,7 +258,7 @@ void ListenerAudio_AllApplications::init(HWND hWnd)
     pMgr->RegisterSessionNotification(pNotif);
 }
 
-void ListenerAudio_AllApplications::uninit()
+void AudioUpdateListener::uninit()
 {
     // apps
     pMgr->UnregisterSessionNotification(pNotif);

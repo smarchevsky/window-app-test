@@ -32,7 +32,7 @@ struct IAudioEndpointVolumeCallback;
 struct IAudioSessionManager2; // apps
 struct IAudioSessionNotification;
 
-class ListenerAudio_AllApplications {
+class AudioUpdateListener {
     IMMDeviceEnumerator* pEnumerator {};
     IMMDevice* pDevice {};
     IAudioEndpointVolume* pEndpointVolume {}; // master
@@ -44,14 +44,14 @@ public:
     void init(HWND hWnd);
     void uninit();
 
-    static ListenerAudio_AllApplications& get()
+    static AudioUpdateListener& get()
     {
-        static ListenerAudio_AllApplications instance;
+        static AudioUpdateListener instance;
         return instance;
     }
 
 private:
-    ListenerAudio_AllApplications() = default;
+    AudioUpdateListener() = default;
 };
 
 //
