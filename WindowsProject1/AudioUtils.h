@@ -147,7 +147,8 @@ class SliderManager {
 
 public:
     CustomSlider& getMaster() { return sliderMasterVol; }
-    CustomSlider* addAppSlider(PID pid, float vol, bool muted);
+    void addAppSlider(PID pid, float vol, bool muted);
+    void removeAppSlider(PID pid);
     void setSliderValue(PID pid, float vol, bool muted);
     //void removeAppSlider(PID pid);
     // std::optional<PID> getHoveredSlider(POINT mousePos);

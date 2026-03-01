@@ -188,6 +188,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         InvalidateRect(hWnd, NULL, TRUE);
     } break;
 
+    case WM_APP_UNREGISTERED: {
+        AudioUpdateInfo info(wParam, lParam);
+        sliderManager.removeAppSlider(info._pid);
+        sliderManager.recalculateSliderRects(hWnd);
+        InvalidateRect(hWnd, NULL, TRUE);
+    } break;
+
     case WM_REFRESH_VOL: {
         AudioUpdateInfo info(wParam, lParam);
         if (info._type == AudioUpdateInfo::Master)

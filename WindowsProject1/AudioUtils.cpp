@@ -121,6 +121,8 @@ public:
                 g_trackedSessions.erase(it);
                 Release();
             }
+            AudioUpdateInfo info(AudioUpdateInfo::App, _pid, 0, false);
+            PostMessage(_hWnd, WM_APP_UNREGISTERED, info._wp, info._lp);
         }
         return S_OK;
     }
@@ -172,7 +174,17 @@ public:
         if (pCtrl2)
             pCtrl2->GetProcessId(&pid);
 
-        wprintf(L"New session (PID %lu)\n", pid);
+        ISimpleAudioVolume* pVol = NULL;
+        if (SUCCEEDED(pNewSession->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVol))) {
+            BOOL bMute;
+            float vol;
+            pVol->GetMasterVolume(&vol);
+            pVol->GetMute(&bMute);
+            AudioUpdateInfo info(AudioUpdateInfo::App, pid, vol, bMute);
+            PostMessage(_hWnd, WM_APP_REGISTERED, info._wp, info._lp);
+            wprintf(L"New session PID %lu, vol: %d\n", pid, (int)(info._vol * 100));
+            pVol->Release();
+        }
 
         AudioSessionEvents* pEvents = new AudioSessionEvents(pid, pNewSession, _hWnd);
 
@@ -426,7 +438,6 @@ IconInfo IconManager::getIconFromProcess(DWORD pid)
 
         cachedProcessIcons[pid] = result;
 
-        printf("Icon width %d\n", result.width);
         wprintf(L"Stored new icon for: %s\n", exePath);
     } else {
         result = foundIconIt->second;
@@ -488,11 +499,17 @@ void CustomSlider::draw(HDC hdc, bool isSystem) const
 //     return SliderId::None;
 // }
 
-CustomSlider* SliderManager::addAppSlider(PID pid, float vol, bool muted)
+void SliderManager::addAppSlider(PID pid, float vol, bool muted)
 {
     auto it = std::find_if(slidersAppVol.begin(), slidersAppVol.end(), [&](const CustomSlider& s) { return s.getPID() == pid; });
     slidersAppVol.push_back(CustomSlider(pid, vol));
-    return &slidersAppVol.back();
+    // return &slidersAppVol.back();
+}
+
+void SliderManager::removeAppSlider(PID pid)
+{
+    auto it = std::find_if(slidersAppVol.begin(), slidersAppVol.end(), [&](const CustomSlider& s) { return s.getPID() == pid; });
+    slidersAppVol.erase(it);
 }
 
 void SliderManager::setSliderValue(PID pid, float vol, bool muted)
