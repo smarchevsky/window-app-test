@@ -65,12 +65,14 @@ class AudioSessionEvents : public IAudioSessionEvents {
     LONG _cRef;
     DWORD _pid;
     IAudioSessionControl* _pCtrl; // back-reference to owning session
+    HWND _hWnd;
 
 public:
-    AudioSessionEvents(DWORD pid, IAudioSessionControl* pCtrl)
+    AudioSessionEvents(DWORD pid, IAudioSessionControl* pCtrl, HWND hWnd)
         : _cRef(1)
         , _pid(pid)
         , _pCtrl(pCtrl)
+        , _hWnd(hWnd)
     {
     }
 
@@ -96,10 +98,13 @@ public:
     }
 
     HRESULT STDMETHODCALLTYPE OnSimpleVolumeChanged(
-        float NewVolume, BOOL NewMute, LPCGUID) override
+        float newVol, BOOL newMute, LPCGUID) override
     {
+        AudioUpdateInfo info(AudioUpdateInfo::App, _pid, newVol, newMute);
+        PostMessage(_hWnd, WM_REFRESH_VOL, info._wp, info._lp);
+
         wprintf(L"[PID %lu] Volume: %.2f | Muted: %s\n",
-            _pid, NewVolume, NewMute ? L"Yes" : L"No");
+            _pid, newVol, newMute ? L"Yes" : L"No");
         return S_OK;
     }
 
@@ -128,10 +133,12 @@ public:
 
 class SessionNotification : public IAudioSessionNotification {
     LONG _cRef;
+    HWND _hWnd;
 
 public:
-    SessionNotification()
+    SessionNotification(HWND hWnd)
         : _cRef(1)
+        , _hWnd(hWnd)
     {
     }
 
@@ -167,7 +174,7 @@ public:
 
         wprintf(L"New session (PID %lu)\n", pid);
 
-        AudioSessionEvents* pEvents = new AudioSessionEvents(pid, pNewSession);
+        AudioSessionEvents* pEvents = new AudioSessionEvents(pid, pNewSession, _hWnd);
 
         // Register on the ORIGINAL pNewSession, but also AddRef it
         pNewSession->AddRef(); // Keep it alive
@@ -185,10 +192,6 @@ public:
 
 void RegisterAllExistingSessions(IAudioSessionManager2* pMgr, HWND hWnd)
 {
-    for (auto* s : g_trackedSessions)
-        s->Release();
-    g_trackedSessions.clear();
-
     IAudioSessionEnumerator* pEnum = nullptr;
     pMgr->GetSessionEnumerator(&pEnum);
 
@@ -217,14 +220,14 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr, HWND hWnd)
             pVol->GetMasterVolume(&vol);
             pVol->GetMute(&bMute);
             AudioUpdateInfo info(AudioUpdateInfo::App, pid, vol, bMute);
-
             PostMessage(hWnd, WM_APP_REGISTERED, info._wp, info._lp);
+
             wprintf(L"Registering PID %lu, vol: %d\n", pid, (int)(info._vol * 100));
             pVol->Release();
         }
 
         // create event listener
-        AudioSessionEvents* pEvents = new AudioSessionEvents(pid, pCtrl);
+        AudioSessionEvents* pEvents = new AudioSessionEvents(pid, pCtrl, hWnd);
         pCtrl->RegisterAudioSessionNotification(pEvents);
         pEvents->Release();
 
@@ -261,7 +264,7 @@ void AudioUpdateListener::init(HWND hWnd)
     // apps
     pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, (void**)&pMgr);
     RegisterAllExistingSessions(pMgr, hWnd);
-    pNotif = new SessionNotification();
+    pNotif = new SessionNotification(hWnd);
     pMgr->RegisterSessionNotification(pNotif);
 }
 
@@ -490,6 +493,14 @@ CustomSlider* SliderManager::addAppSlider(PID pid, float vol, bool muted)
     auto it = std::find_if(slidersAppVol.begin(), slidersAppVol.end(), [&](const CustomSlider& s) { return s.getPID() == pid; });
     slidersAppVol.push_back(CustomSlider(pid, vol));
     return &slidersAppVol.back();
+}
+
+void SliderManager::setSliderValue(PID pid, float vol, bool muted)
+{
+    auto it = std::find_if(slidersAppVol.begin(), slidersAppVol.end(), [&](const CustomSlider& s) { return s.getPID() == pid; });
+    if (it != slidersAppVol.end()) {
+        it->setValue(vol);
+    }
 }
 
 void SliderManager::recalculateSliderRects(HWND hWnd)

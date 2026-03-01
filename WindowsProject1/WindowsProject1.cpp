@@ -193,6 +193,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (info._type == AudioUpdateInfo::Master)
             sliderManager.getMaster().setValue(info._vol);
         else if (info._type == AudioUpdateInfo::App) {
+            sliderManager.setSliderValue(info._pid, info._vol, info._isMuted);
         }
 
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
