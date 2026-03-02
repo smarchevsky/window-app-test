@@ -47,7 +47,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR lpCmdLine,
     _In_ int nCmdShow)
 {
-    CreateConsole();
+    //CreateConsole();
 
     CoinitializeWrapper coinitializeRAII;
 
@@ -198,14 +198,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         AudioUpdateInfo info(wParam, lParam);
         sliderManager.addAppSlider(info._pid, info._vol, info._isMuted);
         sliderManager.recalculateSliderRects(getSliderRegion(hWnd));
-        InvalidateRect(hWnd, NULL, TRUE);
+        InvalidateRect(hWnd, NULL, FALSE);
     } break;
 
     case WM_APP_UNREGISTERED: {
         AudioUpdateInfo info(wParam, lParam);
         sliderManager.removeAppSlider(info._pid);
         sliderManager.recalculateSliderRects(getSliderRegion(hWnd));
-        InvalidateRect(hWnd, NULL, TRUE);
+        InvalidateRect(hWnd, NULL, FALSE);
     } break;
 
     case WM_REFRESH_VOL: {
@@ -213,7 +213,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         SelectInfo si(info._type, info._pid);
         if (auto slider = sliderManager.getGetBySelectInfo(si))
             slider->_val = info._vol;
-        InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
+        InvalidateRect(hWnd, NULL, FALSE); // UpdateWindow(hWnd); // works without it
         return 0;
     }
 
