@@ -16,8 +16,11 @@ enum {
     IDT_TIMER_1,
 };
 
-enum class VolumeType : uint8_t { Master,
-    App };
+enum class VolumeType : uint8_t {
+    Invalid,
+    Master,
+    App
+};
 
 struct AudioUpdateInfo {
 
@@ -141,13 +144,13 @@ public:
 //
 
 struct SliderPickInfo {
-    SliderPickInfo(VolumeType type, PID pid) { _type = type, _pid = pid, _valid = true; }
+    SliderPickInfo(VolumeType type, PID pid) { _type = type, _pid = pid; }
     SliderPickInfo() = default;
-    bool operator==(const SliderPickInfo& rhs) const { return _pid == rhs._pid && _type == rhs._type && _valid == rhs._valid; }
+    bool operator==(const SliderPickInfo& rhs) const { return _type == rhs._type && _pid == rhs._pid; }
     bool operator!=(const SliderPickInfo& rhs) const { return !operator==(rhs); }
+    operator bool() const { return _type != VolumeType::Invalid; }
     PID _pid;
     VolumeType _type;
-    bool _valid;
 };
 
 class SliderManager {

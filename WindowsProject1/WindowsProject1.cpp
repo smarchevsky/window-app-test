@@ -106,11 +106,11 @@ HBITMAP memBitmap;
 
 HWND hLabel;
 
-bool isDownLMB = false;
 POINT cursorScreenPosCaptured;
 LONG cursorOffsetAccumulatorY;
 
 SliderManager sliderManager;
+SliderPickInfo sliderCaptured;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -134,19 +134,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         POINT cursorScreenPos, cursorClientPos;
         GetCursorPos(&cursorScreenPos);
 
-        isDownLMB = true;
-        cursorScreenPosCaptured = cursorScreenPos;
-
         cursorClientPos = cursorScreenPos;
         ScreenToClient(hWnd, &cursorClientPos);
 
-        SetTimer(hWnd, IDT_TIMER_1, 25, (TIMERPROC)NULL);
+        if (auto newCaptured = sliderManager.getHoveredSlider(cursorClientPos)) {
+            sliderCaptured = newCaptured;
+            cursorScreenPosCaptured = cursorScreenPos;
+            SetTimer(hWnd, IDT_TIMER_1, 25, (TIMERPROC)NULL);
+        }
         break;
     }
 
     case WM_LBUTTONUP: {
-        if (isDownLMB) {
-            isDownLMB = false;
+        if (sliderCaptured) {
+            sliderCaptured = {};
             ReleaseCapture();
             ShowCursor(TRUE);
             KillTimer(hWnd, IDT_TIMER_1);
@@ -159,7 +160,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         POINT cursorScreenPos;
         GetCursorPos(&cursorScreenPos);
 
-        if (isDownLMB) {
+        if (sliderCaptured) {
             int dx = cursorScreenPos.x - cursorScreenPosCaptured.x;
             int dy = cursorScreenPos.y - cursorScreenPosCaptured.y;
 
@@ -172,7 +173,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             POINT cursorClientPos = cursorScreenPos;
             ScreenToClient(hWnd, &cursorClientPos);
             auto newHoverInfo = sliderManager.getHoveredSlider(cursorClientPos);
-            SetCursor(newHoverInfo._valid ? cursorHand : cursorDefault);
+            SetCursor(newHoverInfo ? cursorHand : cursorDefault);
         }
         break;
     }
