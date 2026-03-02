@@ -22,6 +22,16 @@ enum class VolumeType : uint8_t {
     App
 };
 
+struct SelectInfo {
+    SelectInfo(VolumeType type, PID pid) { _type = type, _pid = pid; }
+    SelectInfo() = default;
+    bool operator==(const SelectInfo& rhs) const { return _type == rhs._type && _pid == rhs._pid; }
+    bool operator!=(const SelectInfo& rhs) const { return !operator==(rhs); }
+    operator bool() const { return _type != VolumeType::Invalid; }
+    PID _pid;
+    VolumeType _type;
+};
+
 struct AudioUpdateInfo {
 
     union {
@@ -68,6 +78,8 @@ class AudioUpdateListener {
 public:
     void init(HWND hWnd);
     void uninit();
+
+    void setVol(SelectInfo selectInfo, float vol);
 
     static AudioUpdateListener& get()
     {
@@ -143,26 +155,15 @@ public:
 // SLIDER MANAGER
 //
 
-struct SliderPickInfo {
-    SliderPickInfo(VolumeType type, PID pid) { _type = type, _pid = pid; }
-    SliderPickInfo() = default;
-    bool operator==(const SliderPickInfo& rhs) const { return _type == rhs._type && _pid == rhs._pid; }
-    bool operator!=(const SliderPickInfo& rhs) const { return !operator==(rhs); }
-    operator bool() const { return _type != VolumeType::Invalid; }
-    PID _pid;
-    VolumeType _type;
-};
-
 class SliderManager {
     Slider sliderMaster {};
     std::vector<Slider> slidersApp;
 
 public:
-    Slider& getMaster() { return sliderMaster; }
+    Slider* getGetBySelectInfo(SelectInfo info);
     void addAppSlider(PID pid, float vol, bool muted);
     void removeAppSlider(PID pid);
-    void setSliderValue(PID pid, float vol, bool muted);
-    SliderPickInfo getHoveredSlider(POINT mousePos);
+    SelectInfo getHoveredSlider(POINT mousePos);
 
     void recalculateSliderRects(HWND hWnd);
     void drawSliders(HDC hdc);

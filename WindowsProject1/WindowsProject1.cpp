@@ -110,7 +110,7 @@ POINT cursorScreenPosCaptured;
 LONG cursorOffsetAccumulatorY;
 
 SliderManager sliderManager;
-SliderPickInfo sliderCaptured;
+SelectInfo selectedSliderInfo;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -138,7 +138,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         ScreenToClient(hWnd, &cursorClientPos);
 
         if (auto newCaptured = sliderManager.getHoveredSlider(cursorClientPos)) {
-            sliderCaptured = newCaptured;
+            selectedSliderInfo = newCaptured;
             cursorScreenPosCaptured = cursorScreenPos;
             SetTimer(hWnd, IDT_TIMER_1, 25, (TIMERPROC)NULL);
         }
@@ -146,12 +146,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
 
     case WM_LBUTTONUP: {
-        if (sliderCaptured) {
-            sliderCaptured = {};
-            ReleaseCapture();
-            ShowCursor(TRUE);
-            KillTimer(hWnd, IDT_TIMER_1);
-        }
+        selectedSliderInfo = {};
+        ReleaseCapture();
+        ShowCursor(TRUE);
+        KillTimer(hWnd, IDT_TIMER_1);
         cursorOffsetAccumulatorY = 0;
         break;
     }
@@ -160,11 +158,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         POINT cursorScreenPos;
         GetCursorPos(&cursorScreenPos);
 
-        if (sliderCaptured) {
+        if (selectedSliderInfo) {
             int dx = cursorScreenPos.x - cursorScreenPosCaptured.x;
             int dy = cursorScreenPos.y - cursorScreenPosCaptured.y;
 
-            if (dx || dy) {
+            if (dy) {
                 cursorOffsetAccumulatorY -= dy;
                 SetCursorPos(cursorScreenPosCaptured.x, cursorScreenPosCaptured.y);
             }
@@ -181,12 +179,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_TIMER: {
         if (wParam == IDT_TIMER_1) {
             if (cursorOffsetAccumulatorY) {
-                auto& masterSlider = sliderManager.getMaster();
-                float sliderHeight = masterSlider.getHeight();
-                float val = masterSlider.getValue() + (float)cursorOffsetAccumulatorY / sliderHeight;
-                // ListenerAudio_MasterVolume::get().setValue(std::clamp(val, 0.f, 1.f));
-                cursorOffsetAccumulatorY = 0;
+                if (auto slider = sliderManager.getGetBySelectInfo(selectedSliderInfo)) {
+                    float sliderHeight = slider->getHeight();
+                    float newVal = std::clamp(slider->getValue() + (float)cursorOffsetAccumulatorY / sliderHeight, 0.f, 1.f);
+                    if (newVal != slider->getValue())
+                        AudioUpdateListener::get().setVol(selectedSliderInfo, newVal);
+                }
             }
+            cursorOffsetAccumulatorY = 0;
         }
     } break;
 
@@ -206,11 +206,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_REFRESH_VOL: {
         AudioUpdateInfo info(wParam, lParam);
-        if (info._type == VolumeType::Master)
-            sliderManager.getMaster().setValue(info._vol);
-        else if (info._type == VolumeType::App) {
-            sliderManager.setSliderValue(info._pid, info._vol, info._isMuted);
-        }
+        SelectInfo si(info._type, info._pid);
+        if (auto slider = sliderManager.getGetBySelectInfo(si))
+            slider->setValue(info._vol);
 
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
@@ -280,6 +278,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
+
     return 0;
 }
 

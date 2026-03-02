@@ -291,6 +291,40 @@ void AudioUpdateListener::uninit()
     pEnumerator->Release();
 }
 
+void AudioUpdateListener::setVol(SelectInfo selectInfo, float vol)
+{
+    if (selectInfo._type == VolumeType::Master) {
+        if (pEndpointVolume) {
+            pEndpointVolume->SetMasterVolumeLevelScalar(vol, nullptr);
+            // wprintf(L"Setting master vol: %d\n", (int)(vol * 100));
+        }
+
+    } else if (selectInfo._type == VolumeType::App) {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        for (auto* pCtrl : g_trackedSessions) {
+            IAudioSessionControl2* pCtrl2 = nullptr;
+            pCtrl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pCtrl2);
+            if (!pCtrl2)
+                continue;
+
+            DWORD sessionPid = 0;
+            pCtrl2->GetProcessId(&sessionPid);
+            pCtrl2->Release();
+
+            if (sessionPid == selectInfo._pid) {
+                ISimpleAudioVolume* pVolume = nullptr;
+                pCtrl->QueryInterface(__uuidof(ISimpleAudioVolume), (void**)&pVolume);
+                if (pVolume) {
+                    pVolume->SetMasterVolume(vol, nullptr);
+                    pVolume->Release();
+                    // wprintf(L"Setting app vol [PID %u], vol: %d\n", selectInfo._pid, (int)(vol * 100));
+                }
+                break; // remove if app has multiple sessions
+            }
+        }
+    }
+}
+
 std::wstring GetProcessName(PID pid)
 {
     if (pid == 0)
@@ -481,6 +515,20 @@ void Slider::draw(HDC hdc, bool isSystem) const
 // USER INTERFACE MANAGER
 //
 
+Slider* SliderManager::getGetBySelectInfo(SelectInfo info)
+{
+    if (info._type == VolumeType::Master)
+        return &sliderMaster;
+
+    else if (info._type == VolumeType::App) {
+        auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == info._pid; });
+        if (it != slidersApp.end())
+            return &*it;
+    }
+
+    return nullptr;
+}
+
 void SliderManager::addAppSlider(PID pid, float vol, bool muted)
 {
     auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == pid; });
@@ -493,23 +541,15 @@ void SliderManager::removeAppSlider(PID pid)
     slidersApp.erase(it);
 }
 
-void SliderManager::setSliderValue(PID pid, float vol, bool muted)
-{
-    auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == pid; });
-    if (it != slidersApp.end()) {
-        it->setValue(vol);
-    }
-}
-
-SliderPickInfo SliderManager::getHoveredSlider(POINT mousePos)
+SelectInfo SliderManager::getHoveredSlider(POINT mousePos)
 {
     if (sliderMaster.intersects(mousePos)) {
-        return SliderPickInfo(VolumeType::Master, (PID)0);
+        return SelectInfo(VolumeType::Master, (PID)0);
     }
 
     for (int i = 0; i < slidersApp.size(); ++i)
         if (slidersApp.at(i).intersects(mousePos)) {
-            return SliderPickInfo(VolumeType::App, slidersApp.at(i).getPID());
+            return SelectInfo(VolumeType::App, slidersApp.at(i).getPID());
         }
 
     return {};
