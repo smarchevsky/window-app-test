@@ -134,20 +134,18 @@ static constexpr int sliderWidth = 80;
 static constexpr int margin = 10;
 
 class Slider {
-    RECT m_rect;
-    float m_value;
-    PID m_pid;
+    PID _pid;
 
 public:
-    Slider(PID pid, float value) { m_rect = { 0 }, m_pid = pid, m_value = value; }
+    RECT _rect;
+    float _val;
+
+    Slider(PID pid, float value) { _pid = pid, _rect = { 0 }, _val = value; }
     Slider() = default;
 
-    PID getPID() const { return m_pid; }
-    void setRect(RECT rect) { m_rect = rect; }
-    float getHeight() const { return float(m_rect.bottom - m_rect.top); }
-    void setValue(float value) { m_value = value; }
-    float getValue() const { return m_value; }
-    bool intersects(POINT pos) const { return isValidRect(m_rect) ? PtInRect(&m_rect, pos) : false; }
+    PID getPID() const { return _pid; }
+    float getHeight() const { return float(_rect.bottom - _rect.top); }
+    bool intersects(POINT pos) const { return isValidRect(_rect) ? PtInRect(&_rect, pos) : false; }
     void draw(HDC hdc, bool isSystem = false) const;
 };
 
@@ -165,6 +163,6 @@ public:
     void removeAppSlider(PID pid);
     SelectInfo getHoveredSlider(POINT mousePos);
 
-    void recalculateSliderRects(HWND hWnd);
+    void recalculateSliderRects(const RECT& rect);
     void drawSliders(HDC hdc);
 };

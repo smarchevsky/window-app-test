@@ -6,11 +6,13 @@
 
 #include "AudioUtils.h"
 
+// #include <windowsx.h>
 #include <algorithm>
 #include <iostream>
 #include <string>
 
 #define MAX_LOADSTRING 100
+#define HEX_TO_RGB(hex) RGB((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF)
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
@@ -19,9 +21,15 @@ HINSTANCE hInst; // current instance
 WCHAR szTitle[MAX_LOADSTRING]; // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING]; // the main window class name
 
-HBRUSH hBrushSlider = CreateSolidBrush(RGB(100, 100, 250));
+// darks  0x0A0E15 0x212631 0x373F4E 0x4E576A 0x667085
+// lights 0xBFC6D4 0xD1d6E9 0xE0E4EB 0xF0F1F5 0xFFFFFF
+HBRUSH hBrushBackground = CreateSolidBrush(HEX_TO_RGB(0x373F4E));
+HBRUSH hBrushCaption = CreateSolidBrush(HEX_TO_RGB(0x4E576A));
+int captionSizeLeft = 80;
+
 HCURSOR cursorDefault = LoadCursor(nullptr, IDC_ARROW);
 HCURSOR cursorHand = LoadCursor(nullptr, IDC_HAND);
+HCURSOR cursorDrag = LoadCursor(nullptr, IDC_SIZEALL);
 
 void CreateConsole()
 {
@@ -63,7 +71,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         wcex.hInstance = hInstance;
         wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WINDOWSPROJECT1));
         wcex.hCursor = cursorDefault;
-        wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+        wcex.hbrBackground = hBrushBackground;
         wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_WINDOWSPROJECT1);
         wcex.lpszMenuName = NULL;
         wcex.lpszClassName = szWindowClass;
@@ -112,15 +120,22 @@ LONG cursorOffsetAccumulatorY;
 SliderManager sliderManager;
 SelectInfo selectedSliderInfo;
 
+RECT getSliderRegion(HWND hWnd)
+{
+    RECT windowRect;
+    GetClientRect(hWnd, &windowRect);
+    windowRect.left += captionSizeLeft;
+    return windowRect;
+}
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
     case WM_CREATE: {
-        memDC = CreateCompatibleDC(nullptr);
         // hLabel = CreateWindow(L"STATIC", L"Drag to move: X: 0, Y: 0",
         //     WS_VISIBLE | WS_CHILD, 20, 20, 300, 20, hWnd, NULL, NULL, NULL);
-
         AudioUpdateListener::get().init(hWnd);
+        memDC = CreateCompatibleDC(nullptr);
         break;
     }
 
@@ -138,7 +153,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SetTimer(hWnd, IDT_TIMER_1, 25, (TIMERPROC)NULL);
             SetCapture(hWnd);
             ShowCursor(FALSE);
-            printf("slider dragging\n");
         }
         break;
     }
@@ -157,21 +171,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_MOUSEMOVE: {
         POINT cursorScreenPos;
         GetCursorPos(&cursorScreenPos);
-
         if (selectedSliderInfo) {
-            int dx = cursorScreenPos.x - cursorScreenPosCaptured.x;
-            int dy = cursorScreenPos.y - cursorScreenPosCaptured.y;
-
-            if (dy) {
+            if (int dy = cursorScreenPos.y - cursorScreenPosCaptured.y) {
                 cursorOffsetAccumulatorY -= dy;
                 SetCursorPos(cursorScreenPosCaptured.x, cursorScreenPosCaptured.y);
             }
-
-        } else {
-            POINT cursorClientPos = cursorScreenPos;
-            ScreenToClient(hWnd, &cursorClientPos);
-            auto newHoverInfo = sliderManager.getHoveredSlider(cursorClientPos);
-            SetCursor(newHoverInfo ? cursorHand : cursorDefault);
         }
         break;
     }
@@ -181,8 +185,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (cursorOffsetAccumulatorY) {
                 if (auto slider = sliderManager.getGetBySelectInfo(selectedSliderInfo)) {
                     float sliderHeight = slider->getHeight();
-                    float newVal = std::clamp(slider->getValue() + (float)cursorOffsetAccumulatorY / sliderHeight, 0.f, 1.f);
-                    if (newVal != slider->getValue())
+                    float newVal = std::clamp(slider->_val + (float)cursorOffsetAccumulatorY / sliderHeight, 0.f, 1.f);
+                    if (newVal != slider->_val)
                         AudioUpdateListener::get().setVol(selectedSliderInfo, newVal);
                 }
             }
@@ -193,14 +197,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_APP_REGISTERED: {
         AudioUpdateInfo info(wParam, lParam);
         sliderManager.addAppSlider(info._pid, info._vol, info._isMuted);
-        sliderManager.recalculateSliderRects(hWnd);
+        sliderManager.recalculateSliderRects(getSliderRegion(hWnd));
         InvalidateRect(hWnd, NULL, TRUE);
     } break;
 
     case WM_APP_UNREGISTERED: {
         AudioUpdateInfo info(wParam, lParam);
         sliderManager.removeAppSlider(info._pid);
-        sliderManager.recalculateSliderRects(hWnd);
+        sliderManager.recalculateSliderRects(getSliderRegion(hWnd));
         InvalidateRect(hWnd, NULL, TRUE);
     } break;
 
@@ -208,19 +212,47 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         AudioUpdateInfo info(wParam, lParam);
         SelectInfo si(info._type, info._pid);
         if (auto slider = sliderManager.getGetBySelectInfo(si))
-            slider->setValue(info._vol);
-
+            slider->_val = info._vol;
         InvalidateRect(hWnd, NULL, TRUE); // UpdateWindow(hWnd); // works without it
         return 0;
+    }
+    // case WM_NCCALCSIZE: {
+    //     if (wParam == TRUE)
+    //         return 0; // Removes the default standard frame padding
+    //     return DefWindowProc(hWnd, message, wParam, lParam);
+    // }
+    case WM_NCHITTEST: {
+        POINT pt = { LOWORD(lParam), HIWORD(lParam) };
+        ScreenToClient(hWnd, &pt);
+        LRESULT hit = DefWindowProc(hWnd, message, wParam, lParam); // handle resize first
+        if (hit == HTCLIENT) {
+            if (pt.x < captionSizeLeft) {
+                return HTCAPTION; // drag one
+            }
+        }
+        return hit;
+    }
+
+    case WM_SETCURSOR: {
+        if (LOWORD(lParam) == HTCAPTION) {
+            SetCursor(cursorDrag);
+            return TRUE;
+        } else if (LOWORD(lParam) == HTCLIENT) {
+            POINT cursorClientPos;
+            GetCursorPos(&cursorClientPos);
+            ScreenToClient(hWnd, &cursorClientPos);
+            auto newHoverInfo = sliderManager.getHoveredSlider(cursorClientPos);
+            SetCursor(newHoverInfo ? cursorHand : cursorDefault);
+            return TRUE;
+        }
+        return DefWindowProc(hWnd, message, wParam, lParam);
     }
 
     case WM_DESTROY: {
         AudioUpdateListener::get().uninit();
         IconManager::get().uninit();
-
         DeleteObject(memBitmap);
         DeleteDC(memDC);
-
         PostQuitMessage(0);
     } break;
 
@@ -232,23 +264,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         memBitmap = CreateCompatibleBitmap(hdc, LOWORD(lParam), HIWORD(lParam));
         ReleaseDC(hWnd, hdc);
 
-        sliderManager.recalculateSliderRects(hWnd);
+        sliderManager.recalculateSliderRects(getSliderRegion(hWnd));
     } break;
 
     case WM_PAINT: {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
-
-        RECT rect;
-        GetClientRect(hWnd, &rect);
+        RECT windowRect;
+        GetClientRect(hWnd, &windowRect);
+        RECT captionRect { windowRect.left, windowRect.top, windowRect.left + captionSizeLeft, windowRect.bottom };
 
         HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
-
-        FillRect(memDC, &rect, (HBRUSH)(COLOR_WINDOW + 1));
+        FillRect(memDC, &windowRect, hBrushBackground);
+        FillRect(memDC, &captionRect, hBrushCaption);
 
         sliderManager.drawSliders(memDC);
-
-        BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
+        BitBlt(hdc, 0, 0, windowRect.right, windowRect.bottom, memDC, 0, 0, SRCCOPY);
         SelectObject(memDC, oldBitmap);
 
         EndPaint(hWnd, &ps);
@@ -260,7 +291,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_COMMAND: {
         int wmId = LOWORD(wParam);
-        // Parse the menu selections:
         switch (wmId) {
         case IDM_ABOUT:
             DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);

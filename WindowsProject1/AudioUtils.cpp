@@ -486,11 +486,11 @@ IconInfo IconManager::getIconMasterVol() { return iiMasterSpeaker; }
 
 void Slider::draw(HDC hdc, bool isSystem) const
 {
-    float drawHeight = (m_rect.bottom - m_rect.top) * (1.f - m_value);
+    float drawHeight = (_rect.bottom - _rect.top) * (1.f - _val);
 
     RECT drawRect {
-        m_rect.left + margin, m_rect.top + LONG(drawHeight),
-        m_rect.right - margin, m_rect.bottom
+        _rect.left + margin, _rect.top + LONG(drawHeight),
+        _rect.right - margin, _rect.bottom
     };
 
     auto& im = IconManager::get();
@@ -498,7 +498,7 @@ void Slider::draw(HDC hdc, bool isSystem) const
     if (isSystem) {
         iconInfo = im.getIconMasterVol();
     } else {
-        iconInfo = im.getIconFromProcess(m_pid);
+        iconInfo = im.getIconFromProcess(_pid);
     }
 
     if (drawRect.right > drawRect.left && drawRect.bottom > drawRect.top)
@@ -506,7 +506,7 @@ void Slider::draw(HDC hdc, bool isSystem) const
 
     if (iconInfo.hLarge)
         DrawIconEx(hdc,
-            m_rect.left + sliderWidth / 2 - iconInfo.width / 2,
+            _rect.left + sliderWidth / 2 - iconInfo.width / 2,
             drawRect.bottom - sliderWidth / 2 - iconInfo.width / 4,
             iconInfo.hLarge, 0, 0, 0, NULL, DI_NORMAL);
 }
@@ -555,16 +555,12 @@ SelectInfo SliderManager::getHoveredSlider(POINT mousePos)
     return {};
 }
 
-void SliderManager::recalculateSliderRects(HWND hWnd)
+void SliderManager::recalculateSliderRects(const RECT& r)
 {
-    RECT windowRect;
-    GetClientRect(hWnd, &windowRect);
-    LONG windowHeight = windowRect.bottom;
-
-    sliderMaster.setRect({ 0, margin, sliderWidth, windowHeight - margin });
-    int offset = sliderWidth + 30;
+    sliderMaster._rect = { r.left, r.top, r.left + sliderWidth, r.bottom };
+    int offset = sliderMaster._rect.right + 30;
     for (auto& slider : slidersApp) {
-        slider.setRect({ offset, margin, offset + sliderWidth, windowHeight - margin });
+        slider._rect = { offset, r.top, offset + sliderWidth, r.bottom };
         offset += sliderWidth;
     }
 }
