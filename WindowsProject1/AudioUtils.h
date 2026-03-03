@@ -167,3 +167,18 @@ public:
     void recalculateSliderRects(const RECT& rect);
     void drawSliders(HDC hdc);
 };
+
+class FileManager {
+    std::wstring _iniPath;
+    FileManager();
+
+public:
+    static FileManager& get()
+    {
+        static FileManager instance;
+        return instance;
+    }
+
+    void loadWindowRect(HWND hwnd) const;
+    void saveWindowRect(HWND hwnd) const;
+};

@@ -5,6 +5,7 @@
 
 #include <audiopolicy.h>
 #include <psapi.h>
+#include <shlobj.h>
 
 // #include <cassert>
 #include <iostream>
@@ -591,4 +592,64 @@ void SliderManager::drawSliders(HDC hdc)
     sliderMaster.draw(hdc, true);
     for (auto& slider : slidersApp)
         slider.draw(hdc);
+}
+
+FileManager::FileManager()
+{
+    PWSTR appDataPath = NULL;
+    _iniPath = L"";
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, NULL, &appDataPath))) {
+        _iniPath = std::wstring(appDataPath) + L"\\YourAppName.ini";
+        CoTaskMemFree(appDataPath);
+    }
+}
+
+void FileManager::loadWindowRect(HWND hwnd) const
+{
+    std::wstring iniPath = _iniPath;
+    if (iniPath.empty())
+        return;
+
+    RECT rect;
+    rect.left = GetPrivateProfileIntW(L"Window", L"x", 100, iniPath.c_str());
+    rect.top = GetPrivateProfileIntW(L"Window", L"y", 100, iniPath.c_str());
+    int width = GetPrivateProfileIntW(L"Window", L"w", 800, iniPath.c_str());
+    int height = GetPrivateProfileIntW(L"Window", L"h", 600, iniPath.c_str());
+    rect.right = rect.left + width;
+    rect.bottom = rect.top + height;
+
+    HMONITOR hMonitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONULL);
+    if (hMonitor == NULL) {
+        rect.left = 100;
+        rect.top = 100;
+
+    } else {
+        MONITORINFO mi = { sizeof(mi) };
+        if (GetMonitorInfo(hMonitor, &mi)) {
+            if (rect.right > mi.rcWork.right)
+                rect.left = mi.rcWork.right - width;
+            if (rect.bottom > mi.rcWork.bottom)
+                rect.top = mi.rcWork.bottom - height;
+            if (rect.left < mi.rcWork.left)
+                rect.left = mi.rcWork.left;
+            if (rect.top < mi.rcWork.top)
+                rect.top = mi.rcWork.top;
+        }
+    }
+
+    SetWindowPos(hwnd, NULL, rect.left, rect.top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void FileManager::saveWindowRect(HWND hwnd) const
+{
+    RECT rect;
+    if (GetWindowRect(hwnd, &rect)) {
+        std::wstring iniPath = _iniPath;
+        int width = rect.right - rect.left;
+        int height = rect.bottom - rect.top;
+        WritePrivateProfileStringW(L"Window", L"x", std::to_wstring(rect.left).c_str(), iniPath.c_str());
+        WritePrivateProfileStringW(L"Window", L"y", std::to_wstring(rect.top).c_str(), iniPath.c_str());
+        WritePrivateProfileStringW(L"Window", L"w", std::to_wstring(width).c_str(), iniPath.c_str());
+        WritePrivateProfileStringW(L"Window", L"h", std::to_wstring(height).c_str(), iniPath.c_str());
+    }
 }
