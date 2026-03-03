@@ -255,9 +255,7 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr, HWND hWnd)
         AudioSessionEvents* pEvents = new AudioSessionEvents(pid, pCtrl, hWnd);
         pCtrl->RegisterAudioSessionNotification(pEvents);
         pEvents->Release();
-        pCtrl->AddRef();
         g_trackedSessions.push_back(pCtrl); // keep alive!
-        pCtrl->Release();
     }
 
     pEnum->Release();
