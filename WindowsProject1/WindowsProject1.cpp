@@ -5,6 +5,7 @@
 #include "framework.h"
 
 #include "AudioUtils.h"
+#include "Utils.h"
 
 #include <windowsx.h>
 
