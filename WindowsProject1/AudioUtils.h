@@ -38,12 +38,12 @@ struct IAudioSessionManager2; // apps
 struct IAudioSessionNotification;
 
 class AudioUpdateListener {
-    IMMDeviceEnumerator* pEnumerator {};
-    IMMDevice* pDevice {};
-    IAudioEndpointVolume* pEndpointVolume {}; // master
-    IAudioEndpointVolumeCallback* pCallback {}; // master
-    IAudioSessionManager2* pMgr {}; // apps
-    IAudioSessionNotification* pNotif {}; // apps
+    IMMDeviceEnumerator* _pMMDeviceEnumerator {};
+    IMMDevice* _pMMDevice {};
+    IAudioEndpointVolume* _pEndpointVolume {}; // master
+    IAudioEndpointVolumeCallback* _pEndpointVolumeCallback {}; // master
+    IAudioSessionManager2* _pSessionManager2 {}; // apps
+    IAudioSessionNotification* _pSessionNotification {}; // apps
 
 public:
     void init(HWND hWnd);

@@ -253,45 +253,45 @@ void RegisterAllExistingSessions(IAudioSessionManager2* pMgr, HWND hWnd)
 void AudioUpdateListener::init(HWND hWnd)
 {
     CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-        __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
-    pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
+        __uuidof(IMMDeviceEnumerator), (void**)&_pMMDeviceEnumerator);
+    _pMMDeviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &_pMMDevice);
 
     // master
-    pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&pEndpointVolume);
+    _pMMDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, (void**)&_pEndpointVolume);
 
     // extract application vol
     BOOL bMute;
     float vol;
-    pEndpointVolume->GetMasterVolumeLevelScalar(&vol);
-    pEndpointVolume->GetMute(&bMute);
+    _pEndpointVolume->GetMasterVolumeLevelScalar(&vol);
+    _pEndpointVolume->GetMute(&bMute);
     AudioUpdateInfo info(VolumeType::Master, (PID)0, vol, bMute);
     PostMessage(hWnd, WM_REFRESH_VOL, info._wp, info._lp);
 
     // create application event listener
-    pCallback = new CVolumeNotification(hWnd);
-    pEndpointVolume->RegisterControlChangeNotify(pCallback);
+    _pEndpointVolumeCallback = new CVolumeNotification(hWnd);
+    _pEndpointVolume->RegisterControlChangeNotify(_pEndpointVolumeCallback);
 
     // apps
-    pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, (void**)&pMgr);
-    RegisterAllExistingSessions(pMgr, hWnd);
-    pNotif = new SessionNotification(hWnd);
-    pMgr->RegisterSessionNotification(pNotif);
+    _pMMDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr, (void**)&_pSessionManager2);
+    RegisterAllExistingSessions(_pSessionManager2, hWnd);
+    _pSessionNotification = new SessionNotification(hWnd);
+    _pSessionManager2->RegisterSessionNotification(_pSessionNotification);
 }
 
 void AudioUpdateListener::uninit()
 {
     // apps
-    pMgr->UnregisterSessionNotification(pNotif);
-    pNotif->Release();
-    pMgr->Release();
+    _pSessionManager2->UnregisterSessionNotification(_pSessionNotification);
+    _pSessionNotification->Release();
+    _pSessionManager2->Release();
 
     // master
-    pEndpointVolume->UnregisterControlChangeNotify(pCallback);
-    pCallback->Release();
-    pEndpointVolume->Release();
+    _pEndpointVolume->UnregisterControlChangeNotify(_pEndpointVolumeCallback);
+    _pEndpointVolumeCallback->Release();
+    _pEndpointVolume->Release();
 
-    pDevice->Release();
-    pEnumerator->Release();
+    _pMMDevice->Release();
+    _pMMDeviceEnumerator->Release();
 }
 
 void AudioUpdateListener::cleanupExpiredSessions()
@@ -309,8 +309,8 @@ void AudioUpdateListener::cleanupExpiredSessions()
 void AudioUpdateListener::setVol(SelectInfo selectInfo, float vol)
 {
     if (selectInfo._type == VolumeType::Master) {
-        if (pEndpointVolume) {
-            pEndpointVolume->SetMasterVolumeLevelScalar(vol, nullptr);
+        if (_pEndpointVolume) {
+            _pEndpointVolume->SetMasterVolumeLevelScalar(vol, nullptr);
             // wprintf(L"Setting master vol: %d\n", (int)(vol * 100));
         }
 
