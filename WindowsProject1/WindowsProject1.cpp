@@ -143,8 +143,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
 
     case WM_LBUTTONDOWN: {
-        RECT rect;
-        GetClientRect(hWnd, &rect);
         POINT cursorScreenPos;
         GetCursorPos(&cursorScreenPos);
         POINT cursorClientPos = cursorScreenPos;
@@ -189,13 +187,33 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 if (auto slider = sliderManager.getGetBySelectInfo(selectedSliderInfo)) {
                     float sliderHeight = slider->getHeight();
                     float newVal = std::clamp(slider->_val + (float)cursorOffsetAccumulatorY / sliderHeight, 0.f, 1.f);
-                    if (newVal != slider->_val)
+                    if (newVal != slider->_val) {
                         AudioUpdateListener::get().setVol(selectedSliderInfo, newVal);
+                    }
                 }
             }
             cursorOffsetAccumulatorY = 0;
         }
     } break;
+
+    case WM_MOUSEWHEEL: {
+        if (!selectedSliderInfo) {
+            POINT cursorClientPos { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            ScreenToClient(hWnd, &cursorClientPos);
+            int zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+            float wheelSteps = (float)zDelta / WHEEL_DELTA;
+
+            auto hoverInfo = sliderManager.getHoveredSlider(cursorClientPos);
+            if (auto slider = sliderManager.getGetBySelectInfo(hoverInfo)) {
+                float sliderHeight = slider->getHeight();
+                float newVal = std::clamp(slider->_val - wheelSteps * 0.5f, 0.f, 1.f);
+                if (newVal != slider->_val) {
+                    AudioUpdateListener::get().setVol(hoverInfo, newVal);
+                }
+            }
+        }
+        return 0;
+    }
 
     case WM_APP_REGISTERED: {
         AudioUpdateInfo info(wParam, lParam);
