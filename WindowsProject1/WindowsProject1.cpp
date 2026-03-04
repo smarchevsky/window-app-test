@@ -87,10 +87,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         // was WS_OVERLAPPEDWINDOW
 
         DWORD dwStyle = WS_POPUP | WS_THICKFRAME | WS_SYSMENU;
-        hWnd = CreateWindowExW(WS_EX_TOPMOST, szWindowClass, szTitle, dwStyle,
+        hWnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_LAYERED, szWindowClass, szTitle, dwStyle,
             650, 200, 800, 400, nullptr, nullptr, hInstance, nullptr);
         if (!hWnd)
             return FALSE;
+
+        // set layered, not needed if "WS_EX_LAYERED" not defined above
+        // SetWindowLongPtr(hWnd, GWL_EXSTYLE, GetWindowLongPtr(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
 
         FileManager::get().loadWindowRect(hWnd);
         ShowWindow(hWnd, nCmdShow);
@@ -110,6 +113,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }
 
     return (int)msg.wParam;
+}
+
+void SetWindowSemiTransparent(HWND hwnd, bool semiTransparent)
+{
+    // LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+    // SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED); // no need, if already layered
+    BYTE alpha = semiTransparent ? 200 : 255;
+    SetLayeredWindowAttributes(hwnd, 0, alpha, LWA_ALPHA);
 }
 
 HDC memDC;
@@ -140,6 +151,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         //     WS_VISIBLE | WS_CHILD, 20, 20, 300, 20, hWnd, NULL, NULL, NULL);
         AudioUpdateListener::get().init(hWnd);
         memDC = CreateCompatibleDC(nullptr);
+
+        SetWindowSemiTransparent(hWnd, true);
+
         break;
     }
 
@@ -187,6 +201,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (TrackMouseEvent(&tme)) {
                 fMouseTracking = true;
                 // MOUSE ENTER
+                SetWindowSemiTransparent(hWnd, false);
+
                 POINT cursorClientPos = cursorScreenPos;
                 ScreenToClient(hWnd, &cursorClientPos);
                 auto newHoverInfo = sliderManager.getSelectAtPosition(cursorClientPos);
@@ -202,6 +218,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_MOUSELEAVE:
         fMouseTracking = false;
         // MOUSE LEAVE
+
+        SetWindowSemiTransparent(hWnd, true);
         if (auto pSlider = sliderManager.getSliderFromSelect(sliderInfoHovered)) {
             pSlider->_focused = false;
             InvalidateRect(hWnd, NULL, FALSE);
@@ -275,7 +293,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return 0;
     }
 
-#define BORDERLESS 1
+#define BORDERLESS 0
 #if BORDERLESS == 1
     case WM_NCCALCSIZE: {
         if (wParam == TRUE)
