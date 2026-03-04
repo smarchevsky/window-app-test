@@ -202,41 +202,41 @@ void Slider::draw(HDC hdc, bool isSystem) const
 // SLIDER MANAGER
 //
 
-Slider* SliderManager::getGetBySelectInfo(SelectInfo info)
+Slider* SliderManager::getSliderFromSelect(SelectInfo info)
 {
     if (info._type == VolumeType::Master)
-        return &sliderMaster;
+        return &_sliderMaster;
 
     else if (info._type == VolumeType::App) {
-        auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == info._pid; });
-        if (it != slidersApp.end())
+        auto it = std::find_if(_slidersApps.begin(), _slidersApps.end(), [&](const Slider& s) { return s.getPID() == info._pid; });
+        if (it != _slidersApps.end())
             return &*it;
     }
 
     return nullptr;
 }
 
-void SliderManager::addAppSlider(PID pid, float vol, bool muted)
+void SliderManager::appSliderAdd(PID pid, float vol, bool muted)
 {
-    auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == pid; });
-    slidersApp.push_back(Slider(pid, vol));
+    auto it = std::find_if(_slidersApps.begin(), _slidersApps.end(), [&](const Slider& s) { return s.getPID() == pid; });
+    _slidersApps.push_back(Slider(pid, vol));
 }
 
-void SliderManager::removeAppSlider(PID pid)
+void SliderManager::appSliderRemove(PID pid)
 {
-    auto it = std::find_if(slidersApp.begin(), slidersApp.end(), [&](const Slider& s) { return s.getPID() == pid; });
-    slidersApp.erase(it);
+    auto it = std::find_if(_slidersApps.begin(), _slidersApps.end(), [&](const Slider& s) { return s.getPID() == pid; });
+    _slidersApps.erase(it);
 }
 
-SelectInfo SliderManager::getHoveredSlider(POINT mousePos)
+SelectInfo SliderManager::getSelectAtPosition(POINT mousePos)
 {
-    if (sliderMaster.intersects(mousePos)) {
+    if (_sliderMaster.intersects(mousePos)) {
         return SelectInfo(VolumeType::Master, (PID)0);
     }
 
-    for (int i = 0; i < slidersApp.size(); ++i)
-        if (slidersApp.at(i).intersects(mousePos)) {
-            return SelectInfo(VolumeType::App, slidersApp.at(i).getPID());
+    for (int i = 0; i < _slidersApps.size(); ++i)
+        if (_slidersApps.at(i).intersects(mousePos)) {
+            return SelectInfo(VolumeType::App, _slidersApps.at(i).getPID());
         }
 
     return {};
@@ -244,9 +244,9 @@ SelectInfo SliderManager::getHoveredSlider(POINT mousePos)
 
 void SliderManager::recalculateSliderRects(const RECT& r)
 {
-    sliderMaster._rect = { r.left, r.top, r.left + sliderWidth, r.bottom };
-    int offset = sliderMaster._rect.right + 30;
-    for (auto& slider : slidersApp) {
+    _sliderMaster._rect = { r.left, r.top, r.left + sliderWidth, r.bottom };
+    int offset = _sliderMaster._rect.right + 30;
+    for (auto& slider : _slidersApps) {
         slider._rect = { offset, r.top, offset + sliderWidth, r.bottom };
         offset += sliderWidth;
     }
@@ -254,8 +254,8 @@ void SliderManager::recalculateSliderRects(const RECT& r)
 
 void SliderManager::drawSliders(HDC hdc)
 {
-    sliderMaster.draw(hdc, true);
-    for (auto& slider : slidersApp)
+    _sliderMaster.draw(hdc, true);
+    for (auto& slider : _slidersApps)
         slider.draw(hdc);
 }
 #pragma endregion

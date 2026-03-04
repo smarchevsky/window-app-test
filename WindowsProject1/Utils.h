@@ -65,14 +65,15 @@ public:
 //
 
 class SliderManager {
-    Slider sliderMaster {};
-    std::vector<Slider> slidersApp;
+    Slider _sliderMaster {};
+    std::vector<Slider> _slidersApps;
 
 public:
-    Slider* getGetBySelectInfo(SelectInfo info);
-    void addAppSlider(PID pid, float vol, bool muted);
-    void removeAppSlider(PID pid);
-    SelectInfo getHoveredSlider(POINT mousePos);
+    void appSliderAdd(PID pid, float vol, bool muted);
+    void appSliderRemove(PID pid);
+
+    Slider* getSliderFromSelect(SelectInfo info);
+    SelectInfo getSelectAtPosition(POINT mousePos);
 
     void recalculateSliderRects(const RECT& rect);
     void drawSliders(HDC hdc);

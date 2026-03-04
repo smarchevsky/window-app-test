@@ -149,7 +149,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         POINT cursorClientPos = cursorScreenPos;
         ScreenToClient(hWnd, &cursorClientPos);
 
-        if (auto newCaptured = sliderManager.getHoveredSlider(cursorClientPos)) {
+        if (auto newCaptured = sliderManager.getSelectAtPosition(cursorClientPos)) {
             sliderInfoSelected = newCaptured;
             cursorScreenPosCaptured = cursorScreenPos;
             SetTimer(hWnd, IDT_TIMER_1, 25, (TIMERPROC)NULL);
@@ -189,8 +189,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 // MOUSE ENTER
                 POINT cursorClientPos = cursorScreenPos;
                 ScreenToClient(hWnd, &cursorClientPos);
-                auto newHoverInfo = sliderManager.getHoveredSlider(cursorClientPos);
-                if (auto pSlider = sliderManager.getGetBySelectInfo(newHoverInfo)) {
+                auto newHoverInfo = sliderManager.getSelectAtPosition(cursorClientPos);
+                if (auto pSlider = sliderManager.getSliderFromSelect(newHoverInfo)) {
                     pSlider->_focused = true;
                     InvalidateRect(hWnd, NULL, FALSE);
                 }
@@ -202,7 +202,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_MOUSELEAVE:
         fMouseTracking = false;
         // MOUSE LEAVE
-        if (auto pSlider = sliderManager.getGetBySelectInfo(sliderInfoHovered)) {
+        if (auto pSlider = sliderManager.getSliderFromSelect(sliderInfoHovered)) {
             pSlider->_focused = false;
             InvalidateRect(hWnd, NULL, FALSE);
         }
@@ -212,7 +212,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_TIMER: {
         if (wParam == IDT_TIMER_1) {
             if (cursorOffsetAccumulatorY) {
-                if (auto slider = sliderManager.getGetBySelectInfo(sliderInfoSelected)) {
+                if (auto slider = sliderManager.getSliderFromSelect(sliderInfoSelected)) {
                     float sliderHeight = slider->getHeight();
                     float newVal = std::clamp(slider->_val + (float)cursorOffsetAccumulatorY / sliderHeight, 0.f, 1.f);
                     if (newVal != slider->_val) {
@@ -231,8 +231,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             int zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
             float wheelSteps = (float)zDelta / WHEEL_DELTA;
 
-            auto hoverInfo = sliderManager.getHoveredSlider(cursorClientPos);
-            if (auto slider = sliderManager.getGetBySelectInfo(hoverInfo)) {
+            auto hoverInfo = sliderManager.getSelectAtPosition(cursorClientPos);
+            if (auto slider = sliderManager.getSliderFromSelect(hoverInfo)) {
                 float sliderHeight = slider->getHeight();
                 float newVal = std::clamp(slider->_val - wheelSteps * 0.5f, 0.f, 1.f);
                 if (newVal != slider->_val) {
@@ -245,14 +245,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_APP_REGISTERED: {
         AudioUpdateInfo info(wParam, lParam);
-        sliderManager.addAppSlider(info._pid, info._vol, info._isMuted);
+        sliderManager.appSliderAdd(info._pid, info._vol, info._isMuted);
         sliderManager.recalculateSliderRects(getSliderRegion(hWnd));
         InvalidateRect(hWnd, NULL, FALSE);
     } break;
 
     case WM_APP_UNREGISTERED: {
         AudioUpdateInfo info(wParam, lParam);
-        sliderManager.removeAppSlider(info._pid);
+        sliderManager.appSliderRemove(info._pid);
         sliderManager.recalculateSliderRects(getSliderRegion(hWnd));
         InvalidateRect(hWnd, NULL, FALSE);
         AudioUpdateListener::get().cleanupExpiredSessions();
@@ -261,7 +261,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_REFRESH_VOL: {
         AudioUpdateInfo info(wParam, lParam);
         SelectInfo si(info._type, info._pid);
-        if (auto slider = sliderManager.getGetBySelectInfo(si))
+        if (auto slider = sliderManager.getSliderFromSelect(si))
             slider->_val = info._vol;
         InvalidateRect(hWnd, NULL, FALSE); // UpdateWindow(hWnd); // works without it
         return 0;
@@ -319,15 +319,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             POINT cursorClientPos;
             GetCursorPos(&cursorClientPos);
             ScreenToClient(hWnd, &cursorClientPos);
-            newHoverInfo = sliderManager.getHoveredSlider(cursorClientPos);
+            newHoverInfo = sliderManager.getSelectAtPosition(cursorClientPos);
             SetCursor(newHoverInfo ? cursorHand : cursorDefault);
             customCursor = true;
         }
 
         if (newHoverInfo != sliderInfoHovered) {
-            if (auto pSlider = sliderManager.getGetBySelectInfo(newHoverInfo))
+            if (auto pSlider = sliderManager.getSliderFromSelect(newHoverInfo))
                 pSlider->_focused = true;
-            if (auto pSlider = sliderManager.getGetBySelectInfo(sliderInfoHovered))
+            if (auto pSlider = sliderManager.getSliderFromSelect(sliderInfoHovered))
                 pSlider->_focused = false;
             InvalidateRect(hWnd, NULL, FALSE);
             // printf("changed from %d to %d\n", sliderInfoHovered._type, newHoverInfo._type);
