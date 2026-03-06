@@ -16,6 +16,17 @@
 #define MAX_LOADSTRING 100
 #define HEX_TO_RGB(hex) RGB((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF)
 
+void CreateConsole()
+{
+    AllocConsole();
+    SetConsoleTitleW(L"Console title");
+    FILE* fDummy;
+    freopen_s(&fDummy, "CONOUT$", "w", stdout);
+    freopen_s(&fDummy, "CONOUT$", "w", stderr);
+    freopen_s(&fDummy, "CONIN$", "r", stdin);
+    std::ios::sync_with_stdio();
+}
+
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
@@ -26,6 +37,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR lpCmdLine,
     _In_ int nCmdShow)
 {
+    CreateConsole();
     return (int)app.init(WndProc);
 }
 
