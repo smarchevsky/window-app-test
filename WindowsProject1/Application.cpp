@@ -4,7 +4,7 @@
 #include <shellapi.h>
 #include <uxtheme.h>
 
-int Application::init(WNDPROC proc)
+WPARAM Application::init(WNDPROC proc)
 {
     WNDCLASSEXW winParam {
         .cbSize = sizeof(WNDCLASSEXW),
@@ -14,6 +14,7 @@ int Application::init(WNDPROC proc)
         .hbrBackground = (HBRUSH)(COLOR_WINDOW + 1),
         .lpszClassName = L"borderless-window",
     };
+
     ATOM cls = RegisterClassExW(&winParam);
 
     _hWnd = CreateWindowExW(
@@ -44,7 +45,6 @@ int Application::init(WNDPROC proc)
 void Application::updateRegion()
 {
     RECT old_rgn = _rgn;
-
     if (IsMaximized(_hWnd)) {
         WINDOWINFO wi = { .cbSize = sizeof wi };
         GetWindowInfo(_hWnd, &wi);
@@ -177,7 +177,6 @@ LRESULT Application::handleMessageInvisible(HWND hWnd, UINT msg, WPARAM wparam, 
     SetWindowLongPtrW(hWnd, GWL_STYLE, old_style & ~WS_VISIBLE);
     LRESULT result = DefWindowProcW(hWnd, msg, wparam, lparam);
     SetWindowLongPtrW(hWnd, GWL_STYLE, old_style);
-
     return result;
 }
 

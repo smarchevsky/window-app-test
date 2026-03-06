@@ -54,7 +54,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         app.handleCompositionChanged();
         return 0;
     case WM_KEYDOWN:
-        if (app.handleKeydown(wParam))
+        if (app.handleKeydown((DWORD)wParam))
             return 0;
         break;
     case WM_LBUTTONDOWN:

@@ -20,7 +20,7 @@ public:
     RECT _rgn;
     bool _themeEnabled, _compositionEnabled;
 
-    int init(WNDPROC proc);
+    WPARAM init(WNDPROC proc);
     void updateRegion();
     bool handleKeydown(DWORD key);
     bool hasAutohideAppbar(UINT edge, RECT mon);
