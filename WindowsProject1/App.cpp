@@ -104,21 +104,10 @@ bool App::hasAutohideAppbar(UINT edge, RECT mon)
 
 void App::handlePaint()
 {
-    PAINTSTRUCT ps;
-    HDC dc = BeginPaint(_hWnd, &ps);
-    HBRUSH bb = CreateSolidBrush(RGB(0, 255, 0));
+     PAINTSTRUCT ps;
+     HDC dc = BeginPaint(_hWnd, &ps);
 
-    RECT rc = { 0, 0, 1, _height };
-    FillRect(dc, &rc, bb);
-    rc = { 0, 0, _width, 1 };
-    FillRect(dc, &rc, bb);
-    rc = { _width - 1, 0, _width, _height };
-    FillRect(dc, &rc, bb);
-    rc = { 0, _height - 1, _width, _height };
-    FillRect(dc, &rc, bb);
-
-    DeleteObject(bb);
-    EndPaint(_hWnd, &ps);
+     EndPaint(_hWnd, &ps);
 }
 
 void App::handleThemeChanged()

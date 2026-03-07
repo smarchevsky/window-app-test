@@ -4,6 +4,9 @@
 
 #include "cassert"
 
+#define HEX_TO_RGB(hex) RGB((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF)
+HBRUSH hBrushBackground = CreateSolidBrush(HEX_TO_RGB(0x373F4E));
+
 void VolumeApp::handlePreLoop(WNDPROC winProc)
 {
     WNDCLASSEXW winParam {
@@ -11,7 +14,7 @@ void VolumeApp::handlePreLoop(WNDPROC winProc)
         .lpfnWndProc = winProc,
         .hInstance = HINST_THISCOMPONENT,
         .hCursor = LoadCursor(NULL, IDC_ARROW),
-        .hbrBackground = (HBRUSH)(COLOR_WINDOW + 1),
+        .hbrBackground = hBrushBackground,
         .lpszClassName = L"borderless-window",
     };
 
@@ -66,6 +69,6 @@ void VolumeApp::handleMouseLeave()
 
 void VolumeApp::setWindowSemiTransparent(bool semiTransparent)
 {
-    setWindowAlpha(semiTransparent ? 200 : 255);
+    setWindowAlpha(semiTransparent ? 200 : 245);
     // printf("set window %s\n", semiTransparent ? "transparent" : "opaque");
 }
