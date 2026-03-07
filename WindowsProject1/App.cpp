@@ -90,6 +90,10 @@ bool App::handleKeydown(DWORD key)
 
         return true;
     }
+    case VK_ESCAPE: {
+        PostMessage(_hWnd, WM_CLOSE, 0, 0);
+        return true;
+    }
     default:
         return false;
     }
@@ -104,10 +108,10 @@ bool App::hasAutohideAppbar(UINT edge, RECT mon)
 
 void App::handlePaint()
 {
-     PAINTSTRUCT ps;
-     HDC dc = BeginPaint(_hWnd, &ps);
+    PAINTSTRUCT ps;
+    HDC dc = BeginPaint(_hWnd, &ps);
 
-     EndPaint(_hWnd, &ps);
+    EndPaint(_hWnd, &ps);
 }
 
 void App::handleThemeChanged()
