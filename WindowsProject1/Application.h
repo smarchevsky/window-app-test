@@ -14,20 +14,21 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 #endif
 
 class Application {
-public:
     HWND _hWnd;
     int _width, _height;
     RECT _rgn;
     bool _themeEnabled, _compositionEnabled;
 
+public:
     WPARAM init(WNDPROC proc);
     void updateRegion();
+    bool themeEnabled() const { return _themeEnabled; }
+    bool compositionEnabled() const { return _compositionEnabled; }
     bool handleKeydown(DWORD key);
     bool hasAutohideAppbar(UINT edge, RECT mon);
     void handlePaint();
     void handleThemeChanged();
     void handleWindowPosChanged(const WINDOWPOS* pos);
-    LRESULT handleMessageInvisible(HWND hWnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
     void handleNCCalcSize(WPARAM wparam, LPARAM lparam);
     void handleNCCreate(HWND _hWnd, CREATESTRUCTW* cs) { SetWindowLongPtrW(_hWnd, GWLP_USERDATA, (LONG_PTR)cs->lpCreateParams); }

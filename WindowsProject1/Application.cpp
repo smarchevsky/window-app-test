@@ -54,8 +54,10 @@ void Application::updateRegion()
             .right = wi.rcClient.right - wi.rcWindow.left,
             .bottom = wi.rcClient.bottom - wi.rcWindow.top,
         };
-    } else if (!_compositionEnabled) {
+
+    } else if (!compositionEnabled()) {
         _rgn = { .left = 0, .top = 0, .right = 32767, .bottom = 32767 };
+
     } else {
         _rgn = {};
     }
@@ -134,10 +136,7 @@ void Application::handlePaint()
     EndPaint(_hWnd, &ps);
 }
 
-void Application::handleThemeChanged()
-{
-    _themeEnabled = IsThemeActive();
-}
+void Application::handleThemeChanged() { _themeEnabled = IsThemeActive(); }
 
 void Application::handleWindowPosChanged(const WINDOWPOS* pos)
 {
@@ -169,15 +168,6 @@ void Application::handleWindowPosChanged(const WINDOWPOS* pos)
             InvalidateRect(_hWnd, &rc, TRUE);
         }
     }
-}
-
-LRESULT Application::handleMessageInvisible(HWND hWnd, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    LONG_PTR old_style = GetWindowLongPtrW(hWnd, GWL_STYLE);
-    SetWindowLongPtrW(hWnd, GWL_STYLE, old_style & ~WS_VISIBLE);
-    LRESULT result = DefWindowProcW(hWnd, msg, wparam, lparam);
-    SetWindowLongPtrW(hWnd, GWL_STYLE, old_style);
-    return result;
 }
 
 void Application::handleNCCalcSize(WPARAM wparam, LPARAM lparam)
@@ -259,7 +249,7 @@ void Application::handleCompositionChanged()
     DwmIsCompositionEnabled(&enabled);
     _compositionEnabled = enabled;
 
-    if (enabled) {
+    if (compositionEnabled()) {
         static const MARGINS margins { 0, 0, 1, 0 };
         static const DWORD pvAttribute = DWMNCRP_ENABLED;
         DwmExtendFrameIntoClientArea(_hWnd, &margins);

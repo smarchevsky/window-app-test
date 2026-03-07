@@ -69,7 +69,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_NCHITTEST:
         return app.handleNCHitTest(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
     case WM_NCPAINT:
-        if (!app._compositionEnabled)
+        if (!app.compositionEnabled())
             return 0;
         break;
     case WM_NCUAHDRAWCAPTION: // These undocumented messages are sent to draw themed hWnd borders.
@@ -78,11 +78,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_PAINT:
         app.handlePaint();
         return 0;
-    case WM_SETICON:
-    case WM_SETTEXT:
-        if (!app._compositionEnabled && !app._themeEnabled)
-            return app.handleMessageInvisible(hWnd, msg, wParam, lParam);
-        break;
     case WM_THEMECHANGED:
         app.handleThemeChanged();
         break;
