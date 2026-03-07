@@ -4,7 +4,7 @@
 #include "WindowsProject1.h"
 #include "framework.h"
 
-#include "Application.h"
+#include "VolumeApp.h"
 
 #include <algorithm>
 #include <iostream>
@@ -13,10 +13,9 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
 
-#define MAX_LOADSTRING 100
-#define HEX_TO_RGB(hex) RGB((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF)
 
-void CreateConsole()
+
+void createConsole()
 {
     AllocConsole();
     SetConsoleTitleW(L"Console title");
@@ -30,22 +29,22 @@ void CreateConsole()
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
-Application app;
+VolumeApp app;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR lpCmdLine,
     _In_ int nCmdShow)
 {
-    CreateConsole();
-    return (int)app.init(WndProc);
+    createConsole();
+    return (int)app.create(WndProc);
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
     case WM_CLOSE:
-        DestroyWindow(hWnd);
+        app.shutDown(hWnd);
         return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
@@ -69,7 +68,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_NCHITTEST:
         return app.handleNCHitTest(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
     case WM_NCPAINT:
-        if (!app._compositionEnabled)
+        if (!app.compositionEnabled())
             return 0;
         break;
     case WM_NCUAHDRAWCAPTION: // These undocumented messages are sent to draw themed hWnd borders.
@@ -80,7 +79,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
     case WM_SETICON:
     case WM_SETTEXT:
-        if (!app._compositionEnabled && !app._themeEnabled)
+        if (!app.compositionEnabled() && !app.themeEnabled())
             return app.handleMessageInvisible(hWnd, msg, wParam, lParam);
         break;
     case WM_THEMECHANGED:

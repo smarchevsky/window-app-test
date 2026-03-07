@@ -278,14 +278,13 @@ FileManager::FileManager()
         CoTaskMemFree(appDataPath);
     }
 }
-
-void FileManager::loadWindowRect(HWND hwnd) const
+constexpr int defaultX = 100, defaultY = 100, defaultWidth = 600, defaultHeight = 300;
+void FileManager::loadWindowRect(RECT& rect) const
 {
     std::wstring iniPath = _iniPath;
     if (iniPath.empty())
         return;
 
-    RECT rect;
     rect.left = GetPrivateProfileIntW(L"Window", L"x", 100, iniPath.c_str());
     rect.top = GetPrivateProfileIntW(L"Window", L"y", 100, iniPath.c_str());
     int width = GetPrivateProfileIntW(L"Window", L"w", 800, iniPath.c_str());
@@ -295,8 +294,8 @@ void FileManager::loadWindowRect(HWND hwnd) const
 
     HMONITOR hMonitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONULL);
     if (hMonitor == NULL) {
-        rect.left = 100;
-        rect.top = 100;
+        rect.left = defaultX;
+        rect.top = defaultY;
 
     } else {
         MONITORINFO mi = { sizeof(mi) };
@@ -312,20 +311,16 @@ void FileManager::loadWindowRect(HWND hwnd) const
         }
     }
 
-    SetWindowPos(hwnd, NULL, rect.left, rect.top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+    // SetWindowPos(hwnd, NULL, rect.left, rect.top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
-void FileManager::saveWindowRect(HWND hwnd) const
+void FileManager::saveWindowRect(const RECT& rect) const
 {
-    RECT rect;
-    if (GetWindowRect(hwnd, &rect)) {
-        std::wstring iniPath = _iniPath;
-        int width = rect.right - rect.left;
-        int height = rect.bottom - rect.top;
-        WritePrivateProfileStringW(L"Window", L"x", std::to_wstring(rect.left).c_str(), iniPath.c_str());
-        WritePrivateProfileStringW(L"Window", L"y", std::to_wstring(rect.top).c_str(), iniPath.c_str());
-        WritePrivateProfileStringW(L"Window", L"w", std::to_wstring(width).c_str(), iniPath.c_str());
-        WritePrivateProfileStringW(L"Window", L"h", std::to_wstring(height).c_str(), iniPath.c_str());
-    }
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+    WritePrivateProfileStringW(L"Window", L"x", std::to_wstring(rect.left).c_str(), _iniPath.c_str());
+    WritePrivateProfileStringW(L"Window", L"y", std::to_wstring(rect.top).c_str(), _iniPath.c_str());
+    WritePrivateProfileStringW(L"Window", L"w", std::to_wstring(width).c_str(), _iniPath.c_str());
+    WritePrivateProfileStringW(L"Window", L"h", std::to_wstring(height).c_str(), _iniPath.c_str());
 }
 #pragma endregion

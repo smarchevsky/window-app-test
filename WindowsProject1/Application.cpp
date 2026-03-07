@@ -4,17 +4,8 @@
 #include <shellapi.h>
 #include <uxtheme.h>
 
-WPARAM Application::init(WNDPROC proc)
+WPARAM Application::initWindow(const WNDCLASSEXW& winParam, RECT winRect)
 {
-    WNDCLASSEXW winParam {
-        .cbSize = sizeof(WNDCLASSEXW),
-        .lpfnWndProc = proc,
-        .hInstance = HINST_THISCOMPONENT,
-        .hCursor = LoadCursor(NULL, IDC_ARROW),
-        .hbrBackground = (HBRUSH)(COLOR_WINDOW + 1),
-        .lpszClassName = L"borderless-window",
-    };
-
     ATOM cls = RegisterClassExW(&winParam);
 
     _hWnd = CreateWindowExW(
@@ -22,7 +13,7 @@ WPARAM Application::init(WNDPROC proc)
         (LPWSTR)MAKEINTATOM(cls),
         L"Borderless Window",
         WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 200, 200,
+        winRect.left, winRect.top, winRect.right - winRect.left, winRect.bottom - winRect.top,
         NULL, NULL, HINST_THISCOMPONENT, NULL);
 
     SetLayeredWindowAttributes(_hWnd, RGB(255, 0, 255), 0, LWA_COLORKEY);

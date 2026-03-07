@@ -94,6 +94,6 @@ public:
         return instance;
     }
 
-    void loadWindowRect(HWND hwnd) const;
-    void saveWindowRect(HWND hwnd) const;
+    void loadWindowRect(RECT& rect) const;
+    void saveWindowRect(const RECT& rect) const;
 };

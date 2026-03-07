@@ -14,13 +14,16 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 #endif
 
 class Application {
-public:
+protected:
     HWND _hWnd;
     int _width, _height;
     RECT _rgn;
     bool _themeEnabled, _compositionEnabled;
 
-    WPARAM init(WNDPROC proc);
+public:
+    bool compositionEnabled() const { return _compositionEnabled; }
+    bool themeEnabled() const { return _themeEnabled; }
+    WPARAM initWindow(const WNDCLASSEXW& winParam, RECT winRect);
     void updateRegion();
     bool handleKeydown(DWORD key);
     bool hasAutohideAppbar(UINT edge, RECT mon);
