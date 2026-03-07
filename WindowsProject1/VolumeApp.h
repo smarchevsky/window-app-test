@@ -4,7 +4,7 @@
 
 class VolumeApp : public App {
 public:
-    void handlePreLoop(WNDPROC winProc);
+    void startup(WNDPROC winProc);
     void handleCloseWindow(HWND hWnd) override;
 
 private:

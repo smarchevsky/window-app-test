@@ -7,7 +7,7 @@
 #define HEX_TO_RGB(hex) RGB((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF)
 HBRUSH hBrushBackground = CreateSolidBrush(HEX_TO_RGB(0x373F4E));
 
-void VolumeApp::handlePreLoop(WNDPROC winProc)
+void VolumeApp::startup(WNDPROC winProc)
 {
     WNDCLASSEXW winParam {
         .cbSize = sizeof(WNDCLASSEXW),

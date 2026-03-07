@@ -35,7 +35,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ int nCmdShow)
 {
     createConsole();
-    app.handlePreLoop(WndProc);
+    app.startup(WndProc);
 
     MSG message;
     while (GetMessageW(&message, NULL, 0, 0)) {
@@ -43,7 +43,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         DispatchMessageW(&message);
     }
 
-    app.handleAfterLoop();
+    app.shutDown();
     return (int)message.wParam;
 }
 

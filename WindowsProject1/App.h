@@ -33,7 +33,7 @@ public:
     bool themeEnabled() const { return _themeEnabled; }
     void initWindow(const WNDCLASSEXW& winParam, RECT winRect);
     virtual void handleCloseWindow(HWND hWnd);
-    void handleAfterLoop();
+    virtual void shutDown();
     void updateRegion();
     bool handleKeydown(DWORD key);
     void handleMouseMove(POINT cursorScreenPos);

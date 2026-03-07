@@ -26,7 +26,7 @@ void App::initWindow(const WNDCLASSEXW& winParam, RECT winRect)
 
 void App::handleCloseWindow(HWND hWnd) { DestroyWindow(hWnd); }
 
-void App::handleAfterLoop()
+void App::shutDown()
 {
     UnregisterClassW((LPWSTR)MAKEINTATOM(_cls), HINST_THISCOMPONENT);
 }
