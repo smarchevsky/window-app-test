@@ -9,5 +9,5 @@ public:
     void setWindowSemiTransparent(bool semiTransparent);
 
     virtual void onMouseLeave() override;
-    virtual void onMouseEnter() override;
+    virtual void onMouseMove(POINT screenPos, bool justEntered) override;
 };

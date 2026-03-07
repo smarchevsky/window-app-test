@@ -107,6 +107,7 @@ void App::handleMouseLeave()
 
 void App::handleMouseMove(POINT cursorScreenPos)
 {
+    bool justEntered = false;
     if (!_mouseTracking) {
         TRACKMOUSEEVENT tme;
         tme.cbSize = sizeof(TRACKMOUSEEVENT);
@@ -114,9 +115,10 @@ void App::handleMouseMove(POINT cursorScreenPos)
         tme.hwndTrack = _hWnd;
         if (TrackMouseEvent(&tme)) {
             _mouseTracking = true;
-            onMouseEnter();
+            justEntered = true;
         }
     }
+    onMouseMove(cursorScreenPos, justEntered);
 }
 
 bool App::hasAutohideAppbar(UINT edge, RECT mon)

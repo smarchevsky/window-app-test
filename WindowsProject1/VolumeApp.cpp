@@ -50,9 +50,10 @@ void VolumeApp::onMouseLeave()
     // }
 }
 
-void VolumeApp::onMouseEnter()
+void VolumeApp::onMouseMove(POINT screenPos, bool justEntered)
 {
-    setWindowSemiTransparent(false); // MOUSE ENTER
+    if (justEntered)
+        setWindowSemiTransparent(false);
 
     // POINT cursorClientPos = cursorScreenPos;
     // ScreenToClient(_hWnd, &cursorClientPos);

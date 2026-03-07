@@ -26,7 +26,7 @@ private:
 
 protected:
     virtual void onMouseLeave() { }
-    virtual void onMouseEnter() { }
+    virtual void onMouseMove(POINT screenPos, bool justEntered) { }
 
 public:
     bool compositionEnabled() const { return _compositionEnabled; }
