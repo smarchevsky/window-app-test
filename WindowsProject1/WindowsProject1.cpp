@@ -13,8 +13,6 @@
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
 
-
-
 void createConsole()
 {
     AllocConsole();
@@ -37,12 +35,29 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ int nCmdShow)
 {
     createConsole();
-    return (int)app.create(WndProc);
+    app.handlePreLoop(WndProc);
+
+    MSG message;
+    while (GetMessageW(&message, NULL, 0, 0)) {
+        TranslateMessage(&message);
+        DispatchMessageW(&message);
+    }
+
+    app.handleAfterLoop();
+    return (int)message.wParam;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
+    case WM_MOUSEMOVE: {
+        POINT cursorScreenPos;
+        GetCursorPos(&cursorScreenPos);
+        app.handleMouseMove(cursorScreenPos);
+    } break;
+    case WM_MOUSELEAVE: {
+        app.handleMouseLeave();
+    } break;
     case WM_CLOSE:
         app.shutDown(hWnd);
         return 0;

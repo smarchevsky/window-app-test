@@ -2,11 +2,14 @@
 
 #include "Application.h"
 
-#define MAX_LOADSTRING 100
-#define HEX_TO_RGB(hex) RGB((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF)
-
 class VolumeApp : public Application {
+    bool fMouseTracking;
+
 public:
-    WPARAM create(WNDPROC winProc);
+    void handlePreLoop(WNDPROC winProc);
     void shutDown(HWND hWnd);
+
+    void handleMouseMove(POINT cursorScreenPos);
+    void handleMouseLeave();
+    void setWindowSemiTransparent(bool semiTransparent);
 };

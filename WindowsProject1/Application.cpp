@@ -4,33 +4,29 @@
 #include <shellapi.h>
 #include <uxtheme.h>
 
-WPARAM Application::initWindow(const WNDCLASSEXW& winParam, RECT winRect)
+void Application::initWindow(const WNDCLASSEXW& winParam, RECT winRect)
 {
-    ATOM cls = RegisterClassExW(&winParam);
+    _cls = RegisterClassExW(&winParam);
 
     _hWnd = CreateWindowExW(
         WS_EX_APPWINDOW | WS_EX_LAYERED,
-        (LPWSTR)MAKEINTATOM(cls),
+        (LPWSTR)MAKEINTATOM(_cls),
         L"Borderless Window",
         WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
         winRect.left, winRect.top, winRect.right - winRect.left, winRect.bottom - winRect.top,
         NULL, NULL, HINST_THISCOMPONENT, NULL);
 
-    SetLayeredWindowAttributes(_hWnd, RGB(255, 0, 255), 0, LWA_COLORKEY);
+    SetLayeredWindowAttributes(_hWnd, RGB(255, 0, 255), 255, LWA_COLORKEY | LWA_ALPHA);
 
     handleCompositionChanged();
     handleThemeChanged();
     ShowWindow(_hWnd, SW_SHOWDEFAULT);
     UpdateWindow(_hWnd);
+}
 
-    MSG message;
-    while (GetMessageW(&message, NULL, 0, 0)) {
-        TranslateMessage(&message);
-        DispatchMessageW(&message);
-    }
-
-    UnregisterClassW((LPWSTR)MAKEINTATOM(cls), HINST_THISCOMPONENT);
-    return message.wParam;
+void Application::handleAfterLoop()
+{
+    UnregisterClassW((LPWSTR)MAKEINTATOM(_cls), HINST_THISCOMPONENT);
 }
 
 void Application::updateRegion()

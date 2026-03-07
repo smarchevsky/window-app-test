@@ -16,6 +16,7 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 class Application {
 protected:
     HWND _hWnd;
+    ATOM _cls;
     int _width, _height;
     RECT _rgn;
     bool _themeEnabled, _compositionEnabled;
@@ -23,7 +24,8 @@ protected:
 public:
     bool compositionEnabled() const { return _compositionEnabled; }
     bool themeEnabled() const { return _themeEnabled; }
-    WPARAM initWindow(const WNDCLASSEXW& winParam, RECT winRect);
+    void initWindow(const WNDCLASSEXW& winParam, RECT winRect);
+    void handleAfterLoop();
     void updateRegion();
     bool handleKeydown(DWORD key);
     bool hasAutohideAppbar(UINT edge, RECT mon);
