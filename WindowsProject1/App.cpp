@@ -263,7 +263,7 @@ void App::handleCompositionChanged()
     DwmIsCompositionEnabled(&enabled);
     _compositionEnabled = enabled;
 
-    if (enabled) {
+    if (_compositionEnabled) {
         static const MARGINS margins { 0, 0, 1, 0 };
         static const DWORD pvAttribute = DWMNCRP_ENABLED;
         DwmExtendFrameIntoClientArea(_hWnd, &margins);
