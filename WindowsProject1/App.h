@@ -32,6 +32,7 @@ public:
     bool compositionEnabled() const { return _compositionEnabled; }
     bool themeEnabled() const { return _themeEnabled; }
     void initWindow(const WNDCLASSEXW& winParam, RECT winRect);
+    virtual void handleCloseWindow(HWND hWnd);
     void handleAfterLoop();
     void updateRegion();
     bool handleKeydown(DWORD key);

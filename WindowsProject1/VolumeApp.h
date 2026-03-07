@@ -5,7 +5,9 @@
 class VolumeApp : public App {
 public:
     void handlePreLoop(WNDPROC winProc);
-    void shutDown(HWND hWnd);
+    void handleCloseWindow(HWND hWnd) override;
+
+private:
     void setWindowSemiTransparent(bool semiTransparent);
 
     virtual void onMouseLeave() override;

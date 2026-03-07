@@ -25,14 +25,15 @@ void VolumeApp::handlePreLoop(WNDPROC winProc)
     setWindowSemiTransparent(true);
 }
 
-void VolumeApp::shutDown(HWND hWnd)
+void VolumeApp::handleCloseWindow(HWND hWnd)
 {
-    RECT winRect;
     assert(hWnd == _hWnd);
+
+    RECT winRect;
     if (GetWindowRect(hWnd, &winRect))
         FileManager::get().saveWindowRect(winRect);
 
-    DestroyWindow(hWnd);
+    App::handleCloseWindow(hWnd);
 }
 
 void VolumeApp::setWindowSemiTransparent(bool semiTransparent)

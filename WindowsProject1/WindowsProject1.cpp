@@ -59,7 +59,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         app.handleMouseLeave();
     } break;
     case WM_CLOSE:
-        app.shutDown(hWnd);
+        app.handleCloseWindow(hWnd);
         return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
