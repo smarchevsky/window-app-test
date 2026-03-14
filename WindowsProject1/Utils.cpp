@@ -274,7 +274,7 @@ FileManager::FileManager()
     PWSTR appDataPath = NULL;
     _iniPath = L"";
     if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, NULL, &appDataPath))) {
-        _iniPath = std::wstring(appDataPath) + L"\\YourAppName.ini";
+        _iniPath = std::wstring(appDataPath) + L"\\VolumeApp.ini";
         CoTaskMemFree(appDataPath);
     }
 }
