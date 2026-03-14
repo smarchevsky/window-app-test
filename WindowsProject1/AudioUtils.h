@@ -45,15 +45,12 @@ class AudioUpdateListener {
     IAudioSessionManager2* _pSessionManager2 {}; // apps
     IAudioSessionNotification* _pSessionNotification {}; // apps
 
-    void uninit();
-
 public:
     AudioUpdateListener() = default;
-    ~AudioUpdateListener() { uninit(); }
 
     void init(HWND hWnd);
+    void uninit();
     void cleanupExpiredSessions();
-
     void setVol(SelectInfo selectInfo, float vol);
 };
 

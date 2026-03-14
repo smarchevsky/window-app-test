@@ -51,12 +51,13 @@ void App::initWindow(HINSTANCE instance, WNDPROC wndProc, int nCmdShow)
 
     // ShowWindow(_hWnd, SW_SHOWDEFAULT);
     ShowWindow(_hWnd, nCmdShow);
-     UpdateWindow(_hWnd);
+    UpdateWindow(_hWnd);
 }
 
 void App::handleDestroy(HWND hWnd)
 {
     if (_hWnd) {
+        _audioAppListerner.uninit();
         assert(hWnd == _hWnd);
         RECT winRect;
         if (GetWindowRect(_hWnd, &winRect))
