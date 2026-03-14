@@ -113,6 +113,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return app.handleNCAHitTest(hWnd, lParam);
     }
 
+    case WM_GETMINMAXINFO: {
+        MINMAXINFO* mmi = (MINMAXINFO*)lParam;
+        mmi->ptMinTrackSize.x = 300;
+        mmi->ptMinTrackSize.y = 200;
+        mmi->ptMaxTrackSize.x = 1280;
+        mmi->ptMaxTrackSize.y = 600;
+        return 0;
+    }
+
     case WM_COMMAND: {
         int wmId = LOWORD(wParam);
         switch (wmId) {
