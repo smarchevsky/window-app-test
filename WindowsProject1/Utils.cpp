@@ -293,7 +293,7 @@ void FileManager::loadWindowRect(RECT& rect) const
     rect.right = rect.left + width;
     rect.bottom = rect.top + height;
 
-    HMONITOR hMonitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONULL);
+    /* HMONITOR hMonitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONULL);
     if (hMonitor == NULL) {
         rect.left = defaultX;
         rect.top = defaultY;
@@ -310,9 +310,7 @@ void FileManager::loadWindowRect(RECT& rect) const
             if (rect.top < mi.rcWork.top)
                 rect.top = mi.rcWork.top;
         }
-    }
-
-    // SetWindowPos(hwnd, NULL, rect.left, rect.top, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+    } */
 }
 
 void FileManager::saveWindowRect(const RECT& rect) const
