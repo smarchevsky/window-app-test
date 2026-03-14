@@ -99,6 +99,7 @@ void VolumeApp::onMouseLeave()
         pSlider->_focused = false;
         InvalidateRect(_hWnd, NULL, FALSE);
     }
+    sliderInfoHovered = {};
 }
 
 void VolumeApp::onMouseMove(POINT cursorClientPos, bool justEntered)
@@ -112,8 +113,9 @@ void VolumeApp::onMouseMove(POINT cursorClientPos, bool justEntered)
             pSlider->_focused = true;
         if (auto pSlider = sliderManager.getSliderFromSelect(sliderInfoHovered))
             pSlider->_focused = false;
+        sliderInfoHovered = newHoverInfo;
+
         InvalidateRect(_hWnd, NULL, FALSE);
         // printf("changed from %d to %d\n", sliderInfoHovered._type, newHoverInfo._type);
-        sliderInfoHovered = newHoverInfo;
     }
 }

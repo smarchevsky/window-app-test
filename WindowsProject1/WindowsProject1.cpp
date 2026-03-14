@@ -33,7 +33,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR lpCmdLine,
     _In_ int nCmdShow)
 {
-    // createConsole();
+    createConsole();
 
     CoinitializeWrapper coinitializeRAII;
 
@@ -63,8 +63,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         app.destroyWindow(hWnd);
     } break;
 
+    case WM_LBUTTONDOWN: // handle window drag on LMB
+        ReleaseCapture();
+        SendMessage(hWnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        return 0;
+
     case WM_MOUSEMOVE: {
-        app.handleMouseMove(wParam, lParam);
+        static LPARAM prevLParam;
+        if (prevLParam != lParam) {
+            app.handleMouseMove(wParam, lParam);
+            prevLParam = lParam;
+        }
+        return 0;
     } break;
 
     case WM_MOUSELEAVE: {

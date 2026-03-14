@@ -79,7 +79,7 @@ void App::handleMouseMove(WPARAM wParam, LPARAM lParam)
     }
 
     POINT cursorScreenPos { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-    ScreenToClient(_hWnd, &cursorScreenPos);
+    // printf("cursorScreenPos %s %d, %d\n", (justEntered ? "entered" : ""), cursorScreenPos.x, cursorScreenPos.y);
     onMouseMove(cursorScreenPos, justEntered);
 }
 
@@ -96,8 +96,8 @@ void App::setWindowAlpha(BYTE alpha)
     // LONG_PTR exStyle = GetWindowLongPtr(_hWnd, GWL_EXSTYLE);
     // SetWindowLongPtr(_hWnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED); // no need, if already layered
 
-    SetLayeredWindowAttributes(_hWnd, RGB(255, 0, 255), alpha, LWA_COLORKEY | LWA_ALPHA); // get rid of white line at the top
-    // SetLayeredWindowAttributes(_hWnd, 0, alpha, LWA_ALPHA);
+    // SetLayeredWindowAttributes(_hWnd, RGB(255, 0, 255), alpha, LWA_COLORKEY | LWA_ALPHA); // get rid of white line at the top
+     SetLayeredWindowAttributes(_hWnd, 0, alpha, LWA_ALPHA);
 }
 
 // INHERIT BELOW
@@ -129,6 +129,6 @@ LRESULT App::handleNCAHitTest(HWND hWnd, LPARAM lParam)
         if (bottom)          return HTBOTTOM;
         if (left)            return HTLEFT;
         if (right)           return HTRIGHT;
-        return HTCAPTION; // drag to move anywhere else
+        return HTCLIENT; // drag to move anywhere else
     }
 }
