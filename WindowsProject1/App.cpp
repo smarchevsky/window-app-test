@@ -1,7 +1,7 @@
 #include "App.h"
 
 #include "Resource.h"
-#include <cassert>
+// #include <cassert>
 
 HCURSOR cursorDefault = LoadCursor(nullptr, IDC_ARROW);
 HCURSOR cursorHand = LoadCursor(nullptr, IDC_HAND);
@@ -10,7 +10,7 @@ HCURSOR cursorHand = LoadCursor(nullptr, IDC_HAND);
 WCHAR szTitle[MAX_LOADSTRING]; // title bar text
 WCHAR szWindowClass[MAX_LOADSTRING]; // main window class name
 
-void App::initWindow(HINSTANCE instance, WNDPROC wndProc)
+void App::initWindow(HINSTANCE instance, WNDPROC wndProc, RECT rc)
 {
     _hInstance = instance;
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -24,7 +24,7 @@ void App::initWindow(HINSTANCE instance, WNDPROC wndProc)
     wcex.hInstance = _hInstance;
     wcex.hIcon = LoadIcon(_hInstance, MAKEINTRESOURCE(IDI_WINDOWSPROJECT1));
     wcex.hCursor = cursorDefault;
-    wcex.hbrBackground = hBrushBackground;
+    // wcex.hbrBackground = hBrushBackground;
     wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_WINDOWSPROJECT1);
     wcex.lpszMenuName = NULL;
     wcex.lpszClassName = szWindowClass;
@@ -38,9 +38,6 @@ void App::initWindow(HINSTANCE instance, WNDPROC wndProc)
 
     // DWORD dwStyle = WS_POPUP | WS_THICKFRAME | WS_SYSMENU;
 
-    RECT rc;
-    FileManager::get().loadWindowRect(rc);
-
     _hWnd = CreateWindowExW(
         WS_EX_TOPMOST | WS_EX_LAYERED,
         szWindowClass, szTitle,
@@ -48,23 +45,14 @@ void App::initWindow(HINSTANCE instance, WNDPROC wndProc)
         rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top,
         nullptr, nullptr, _hInstance, nullptr);
 
-    _audioAppListerner.init(_hWnd);
-
     setWindowAlpha(200);
     // ShowWindow(_hWnd, nCmdShow); // or SW_SHOWDEFAULT, not necessary when WS_VISIBLE
     // UpdateWindow(_hWnd);
 }
 
-void App::handleDestroy(HWND hWnd)
+void App::destroyWindow(HWND hWnd)
 {
-    if (_hWnd) {
-        _audioAppListerner.uninit();
-
-        assert(hWnd == _hWnd);
-        RECT winRect;
-        if (GetWindowRect(_hWnd, &winRect))
-            FileManager::get().saveWindowRect(winRect);
-
+    if (_hWnd == hWnd) {
         DestroyWindow(_hWnd);
         _hWnd = nullptr;
     }
@@ -123,109 +111,33 @@ void App::setWindowAlpha(BYTE alpha)
 
 // INHERIT BELOW
 
-void App::onMouseLeave()
-{
-    setWindowAlpha(200);
-    if (auto pSlider = sliderManager.getSliderFromSelect(sliderInfoHovered)) {
-        pSlider->_focused = false;
-        InvalidateRect(_hWnd, NULL, FALSE);
-    }
-}
-
-void App::onMouseMove(POINT cursorClientPos, bool justEntered)
-{
-    if (justEntered)
-        setWindowAlpha(255);
-
-    SelectInfo newHoverInfo = sliderManager.getSelectAtPosition(cursorClientPos);
-    if (newHoverInfo != sliderInfoHovered) {
-        if (auto pSlider = sliderManager.getSliderFromSelect(newHoverInfo))
-            pSlider->_focused = true;
-        if (auto pSlider = sliderManager.getSliderFromSelect(sliderInfoHovered))
-            pSlider->_focused = false;
-        InvalidateRect(_hWnd, NULL, FALSE);
-        // printf("changed from %d to %d\n", sliderInfoHovered._type, newHoverInfo._type);
-        sliderInfoHovered = newHoverInfo;
-    }
-}
-
-void App::onMouseScroll(POINT cursorClientPos, float delta)
-{
-    auto hoverInfo = sliderManager.getSelectAtPosition(cursorClientPos);
-    if (auto slider = sliderManager.getSliderFromSelect(hoverInfo)) {
-        float sliderHeight = slider->getHeight();
-
-        float oldVal = pow(slider->_val, .5f);
-        float newVal = std::clamp(oldVal + delta / 16, 0.f, 1.f);
-        newVal = pow(newVal, 2.f);
-
-        if (newVal != oldVal) {
-            _audioAppListerner.setVol(hoverInfo, newVal);
-        }
-    }
-}
-
 void App::handleResize(WPARAM wParam, LPARAM lParam)
 {
     RECT rc;
     GetClientRect(_hWnd, &rc);
-    sliderManager.recalculateSliderRects(rc);
-    InvalidateRect(_hWnd, NULL, FALSE);
-}
-
-void App::handleMMAppRegistered(WPARAM wParam, LPARAM lParam)
-{
-    RECT rc;
-    GetClientRect(_hWnd, &rc);
-
-    AudioUpdateInfo info(wParam, lParam);
-    sliderManager.appSliderAdd(info._pid, info._vol, info._isMuted);
-    sliderManager.recalculateSliderRects(rc);
-
-    InvalidateRect(_hWnd, NULL, FALSE);
-}
-
-void App::handleMMAppUnegistered(WPARAM wParam, LPARAM lParam)
-{
-    RECT rc;
-    GetClientRect(_hWnd, &rc);
-
-    AudioUpdateInfo info(wParam, lParam);
-    sliderManager.appSliderRemove(info._pid);
-    sliderManager.recalculateSliderRects(rc);
-
-    InvalidateRect(_hWnd, NULL, FALSE);
-    _audioAppListerner.cleanupExpiredSessions();
-}
-
-void App::handleMMRefreshVol(WPARAM wParam, LPARAM lParam)
-{
-    AudioUpdateInfo info(wParam, lParam);
-    SelectInfo si(info._type, info._pid);
-    if (auto slider = sliderManager.getSliderFromSelect(si))
-        slider->_val = info._vol;
-    InvalidateRect(_hWnd, NULL, FALSE); // UpdateWindow(hWnd); // works without it
+    onResize(rc);
 }
 
 // clang-format off
 const int BORDER = 8;
 LRESULT App::handleNCAHitTest(HWND hWnd, LPARAM lParam)
 {
-    assert(hWnd == _hWnd);
-    POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-    RECT rc;
-    GetWindowRect(_hWnd, &rc);
-    bool left = pt.x < rc.left + BORDER;
-    bool right = pt.x >= rc.right - BORDER;
-    bool top = pt.y < rc.top + BORDER;
-    bool bottom = pt.y >= rc.bottom - BORDER;
-    if (top && left)     return HTTOPLEFT;
-    if (top && right)    return HTTOPRIGHT;
-    if (bottom && left)  return HTBOTTOMLEFT;
-    if (bottom && right) return HTBOTTOMRIGHT;
-    if (top)             return HTTOP;
-    if (bottom)          return HTBOTTOM;
-    if (left)            return HTLEFT;
-    if (right)           return HTRIGHT;
-    return HTCAPTION; // drag to move anywhere else
+    if(hWnd == _hWnd) {
+        POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+        RECT rc;
+        GetWindowRect(_hWnd, &rc);
+        bool left = pt.x < rc.left + BORDER;
+        bool right = pt.x >= rc.right - BORDER;
+        bool top = pt.y < rc.top + BORDER;
+        bool bottom = pt.y >= rc.bottom - BORDER;
+        if (top && left)     return HTTOPLEFT;
+        if (top && right)    return HTTOPRIGHT;
+        if (bottom && left)  return HTBOTTOMLEFT;
+        if (bottom && right) return HTBOTTOMRIGHT;
+        if (top)             return HTTOP;
+        if (bottom)          return HTBOTTOM;
+        if (left)            return HTLEFT;
+        if (right)           return HTRIGHT;
+        return HTCAPTION; // drag to move anywhere else
+    }
 }

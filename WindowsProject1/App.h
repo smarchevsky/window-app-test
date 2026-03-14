@@ -3,9 +3,6 @@
 #include <Windows.h>
 #include <windowsx.h>
 
-#include "AudioUtils.h"
-#include "Utils.h"
-
 #include <algorithm>
 
 #define HEX_TO_RGB(hex) RGB((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF)
@@ -14,44 +11,28 @@
 // lights 0xBFC6D4 0xD1d6E9 0xE0E4EB 0xF0F1F5 0xFFFFFF
 
 class App {
-    // temporary
-    HBRUSH hBrushBackground = CreateSolidBrush(HEX_TO_RGB(0x373F4E));
-    HBRUSH hBrushCaption = CreateSolidBrush(HEX_TO_RGB(0x4E576A));
-
 protected:
     HINSTANCE _hInstance;
     HWND _hWnd;
-
-    AudioUpdateListener _audioAppListerner;
-
-    SliderManager sliderManager;
-    SelectInfo sliderInfoHovered;
 
 private:
     bool _mouseTracking;
 
 protected:
-    virtual void onMouseLeave();
-    virtual void onMouseMove(POINT cursorClientPos, bool justEntered);
-    virtual void onMouseScroll(POINT cursorClientPos, float delta);
+    virtual void onMouseLeave() = 0;
+    virtual void onMouseMove(POINT cursorClientPos, bool justEntered) = 0;
+    virtual void onMouseScroll(POINT cursorClientPos, float delta) = 0;
 
-    virtual void onPaint(HDC hdc)
-    {
-        RECT windowRect;
-        GetClientRect(_hWnd, &windowRect);
-
-        FillRect(hdc, &windowRect, hBrushBackground);
-        sliderManager.drawSliders(hdc);
-    }
-    virtual void onResize(RECT newRect) { }
+    virtual void onPaint(HDC hdc) = 0;
+    virtual void onResize(RECT newRect) = 0;
 
 public:
+    virtual void initWindow(HINSTANCE instance, WNDPROC wndProc, RECT rc);
+    virtual void destroyWindow(HWND hWnd);
+
     HINSTANCE getInstance() { return _hInstance; }
 
-    virtual void initWindow(HINSTANCE instance, WNDPROC wndProc);
-
     virtual void handleResize(WPARAM wParam, LPARAM lParam);
-    virtual void handleDestroy(HWND hWnd);
 
     void handleMouseMove(WPARAM wParam, LPARAM lParam);
     void handleMouseLeave();
@@ -62,9 +43,5 @@ public:
     void setWindowAlpha(BYTE alpha);
 
 public: // INHERIT THIS
-    void handleMMAppRegistered(WPARAM wParam, LPARAM lParam);
-    void handleMMAppUnegistered(WPARAM wParam, LPARAM lParam);
-    void handleMMRefreshVol(WPARAM wParam, LPARAM lParam);
-
     LRESULT handleNCAHitTest(HWND hWnd, LPARAM lParam);
 };

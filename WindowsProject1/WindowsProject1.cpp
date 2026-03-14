@@ -4,14 +4,14 @@
 #include "WindowsProject1.h"
 #include "framework.h"
 
-#include "App.h"
+#include "VolumeApp.h"
 
 #include "AudioUtils.h"
 #include "Utils.h"
 
 #include "Timer.h"
 
-App app;
+VolumeApp app;
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
@@ -37,7 +37,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     CoinitializeWrapper coinitializeRAII;
 
-    app.initWindow(hInstance, WndProc);
+    app.construct(hInstance, WndProc);
+
     TIMEPOINT("init window");
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINDOWSPROJECT1));
     MSG msg;
@@ -48,6 +49,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
     }
 
+    app.cleanup();
     return (int)msg.wParam;
 }
 
@@ -56,6 +58,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message) {
     case WM_CREATE: {
         TIMEPOINT("WM_CREATE");
+    } break;
+
+    case WM_CLOSE: {
+        app.destroyWindow(hWnd);
     } break;
 
     case WM_MOUSEMOVE: {
@@ -116,7 +122,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             break;
 
         case IDM_EXIT:
-            DestroyWindow(hWnd);
+            SendMessage(hWnd, WM_CLOSE, wParam, lParam);
             break;
 
         default:
